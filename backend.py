@@ -38,6 +38,14 @@ import shutil
 
 app = FastAPI(title="PGE Tool Backend", version="2.0.0")
 
+@app.get("/")
+async def root():
+    return {
+        "message": "Phúc Gia Hub API is running!",
+        "status": "online",
+        "docs": "/docs"
+    }
+
 # Allow Public Origins for Production
 app.add_middleware(
     CORSMiddleware,
