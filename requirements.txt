@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pandas
+openpyxl
+docxtpl
+docxcompose
+python-docx
+PyPDF2
+docx2pdf
