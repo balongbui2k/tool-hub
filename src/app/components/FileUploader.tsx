@@ -1,11 +1,11 @@
 import { Upload } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useState, ReactNode } from "react";
 
 interface FileUploaderProps {
   accept?: string;
   onFileSelect: (file: File) => void;
   title: string;
-  description: string;
+  description: string | ReactNode;
 }
 
 export function FileUploader({ accept, onFileSelect, title, description }: FileUploaderProps) {
@@ -59,7 +59,7 @@ export function FileUploader({ accept, onFileSelect, title, description }: FileU
           <Upload className="w-8 h-8 text-blue-600" />
         </div>
         <h3 className="text-xl font-semibold text-gray-900 mb-2">{title}</h3>
-        <p className="text-gray-600 mb-6">{description}</p>
+        <div className="text-gray-600 mb-6">{description}</div>
         <label className="inline-block">
           <input
             type="file"

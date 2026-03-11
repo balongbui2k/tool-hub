@@ -2,17 +2,7 @@ import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { ToolCard } from "../components/ToolCard";
 import {
-  FileText,
-  Minimize2,
-  Combine,
-  Split,
-  Image,
-  Maximize2,
-  Eraser,
-  Type,
-  CaseSensitive,
   Sparkles,
-  FileEdit,
   Microscope,
   ClipboardCheck,
   BarChart3,
@@ -20,63 +10,94 @@ import {
   Scissors,
   RefreshCw,
   QrCode,
+  Wrench,
+  FileSearch,
+  Image as ImageIcon,
+  Type
 } from "lucide-react";
+import { useState } from "react";
+
+const pglTools = [
+  {
+    title: "Phân tích mẫu",
+    description: "Quản lý kết quả phân tích phòng thí nghiệm, kiểm định an toàn",
+    icon: Microscope,
+    href: "/#",
+    color: "bg-brand-pgl",
+  },
+  {
+    title: "Chứng nhận",
+    description: "Xuất giấy chứng nhận thử nghiệm và công bố hợp quy",
+    icon: ClipboardCheck,
+    href: "/#",
+    color: "bg-brand-pgl",
+  },
+  {
+    title: "Báo cáo thống kê",
+    description: "Tổng hợp dữ liệu, báo cáo kết quả định kỳ chuyên sâu",
+    icon: BarChart3,
+    href: "/#",
+    color: "bg-brand-pgl",
+  },
+];
+
+const pgeTools = [
+  {
+    title: "Xuất Chứng Chỉ Tổng",
+    description: "Tạo file Word chứng chỉ hàng loạt từ danh sách Excel mẫu",
+    icon: Award,
+    href: "/pge/cert-suite",
+    color: "bg-brand-pge",
+  },
+  {
+    title: "Tách PDF",
+    description: "Tự động phân tách và tách chứng chỉ PDF lẻ theo tên học viên",
+    icon: Scissors,
+    href: "/pge/split-pdf",
+    color: "bg-brand-pge",
+  },
+  {
+    title: "Đổi Tên Hàng Loạt",
+    description: "Scan hàng loạt file PDF và đặt tên tự động theo danh sách",
+    icon: RefreshCw,
+    href: "/pge/rename",
+    color: "bg-brand-pge",
+  },
+  {
+    title: "QR Code Generator",
+    description: "Tạo mã QR cho tài liệu Excel/Word, website và danh thiếp",
+    icon: QrCode,
+    href: "/pge/qr-generator",
+    color: "bg-brand-pge",
+  },
+];
+
+const otherTools = [
+  {
+    title: "Nén & Ghép PDF",
+    description: "Tốc độ cao, giữ nguyên chất lượng hồ sơ quan trọng",
+    icon: FileSearch,
+    href: "/other/pdf-compress",
+    color: "bg-slate-700",
+  },
+  {
+    title: "Xử lý hình ảnh",
+    description: "Xoá nền, nén ảnh, resize kích thước chuẩn",
+    icon: ImageIcon,
+    href: "/other/image-resize",
+    color: "bg-slate-700",
+  },
+  {
+    title: "Tiện ích văn bản",
+    description: "Đổi font, đếm chữ, tóm tắt nội dung AI",
+    icon: Type,
+    href: "/other/text-counter",
+    color: "bg-slate-700",
+  },
+];
 
 export function Home() {
-  const pglTools = [
-    {
-      title: "Phân tích mẫu",
-      description: "Quản lý kết quả phân tích phòng thí nghiệm, kiểm định an toàn",
-      icon: Microscope,
-      href: "/#",
-      color: "bg-brand-pgl",
-    },
-    {
-      title: "Chứng nhận",
-      description: "Xuất giấy chứng nhận thử nghiệm và công bố hợp quy",
-      icon: ClipboardCheck,
-      href: "/#",
-      color: "bg-brand-pgl",
-    },
-    {
-      title: "Báo cáo thống kê",
-      description: "Tổng hợp dữ liệu, báo cáo kết quả định kỳ chuyên sâu",
-      icon: BarChart3,
-      href: "/#",
-      color: "bg-brand-pgl",
-    },
-  ];
-
-  const pgeTools = [
-    {
-      title: "Xuất Chứng Chỉ Tổng",
-      description: "Tạo file Word chứng chỉ hàng loạt từ danh sách Excel mẫu",
-      icon: Award,
-      href: "/pge/cert-suite",
-      color: "bg-brand-pge",
-    },
-    {
-      title: "Tách PDF",
-      description: "Tự động phân tách và tách chứng chỉ PDF lẻ theo tên học viên",
-      icon: Scissors,
-      href: "/pge/split-pdf",
-      color: "bg-brand-pge",
-    },
-    {
-      title: "Đổi Tên Hàng Loạt",
-      description: "Scan hàng loạt file PDF và đặt tên tự động theo danh sách",
-      icon: RefreshCw,
-      href: "/pge/rename",
-      color: "bg-brand-pge",
-    },
-    {
-      title: "QR Code Generator",
-      description: "Tạo mã QR cho tài liệu Excel/Word, website và danh thiếp",
-      icon: QrCode,
-      href: "/pge/qr-generator",
-      color: "bg-brand-pge",
-    },
-  ];
+  const [isDisableFuction] = useState(true);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
@@ -117,11 +138,15 @@ export function Home() {
             </div>
             <p className="text-slate-500 text-right text-sm font-medium w-full sm:w-auto">Quản lý mẫu phân tích hiệu suất cao</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {pglTools.map((tool) => (
-              <ToolCard key={tool.title} {...tool} />
-            ))}
-          </div>
+          {isDisableFuction ? (
+            <div className="w-full"><p className="text-center text-slate-800">Các công cụ đang trong quá trình phát triển!</p></div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {pglTools.map((tool) => (
+                <ToolCard key={tool.title} {...tool} />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* PGE */}
@@ -140,8 +165,31 @@ export function Home() {
             </div>
             <p className="text-slate-500 text-right text-sm font-medium w-full sm:w-auto">Quản lý và xuất chứng chỉ hàng loạt</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {pgeTools.map((tool) => (
+              <ToolCard key={tool.title} {...tool} />
+            ))}
+          </div>
+        </section>
+
+        {/* Other Tools */}
+        <section className="mb-20" aria-labelledby="other-heading">
+          <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4 border-b border-slate-200 pb-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-slate-900/10 rounded-xl shadow-sm border border-slate-900/20">
+                  <Wrench className="w-6 h-6 text-slate-900" />
+                </div>
+                <div>
+                  <h2 id="other-heading" className="text-3xl font-bold text-slate-900 tracking-tight">Công cụ đa năng</h2>
+                  <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest mt-1">Xử lý tài liệu & media nhanh gọn</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-slate-500 text-right text-sm font-medium w-full sm:w-auto">Tiện ích hỗ trợ văn phòng hàng ngày</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {otherTools.map((tool) => (
               <ToolCard key={tool.title} {...tool} />
             ))}
           </div>

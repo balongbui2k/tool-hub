@@ -1,11 +1,15 @@
 import { createBrowserRouter, Navigate } from "react-router";
 import React from "react";
 import { Home } from "./pages/Home";
-import { PgeCertSuite } from "./pages/tools/PgeCertSuite";
-import { PgeSplitPdf } from "./pages/tools/PgeSplitPdf";
-import { PgeRename } from "./pages/tools/PgeRename";
+import { PgeCertSuite } from "./pages/pge-tool/cert-suite/CertSuitePage";
+import { PgeSplitPdf } from "./pages/pge-tool/split-pdf/SplitPdfPage";
+import { PgeRename } from "./pages/pge-tool/rename/RenamePage";
+import { QrGenerator } from "./pages/pge-tool/qr-generator/QrGeneratorPage";
 
-import { QrGenerator } from "./pages/tools/QrGenerator";
+// Other Tools
+import { PdfCompress } from "./pages/other-tools/PdfCompress";
+import { ImageResize } from "./pages/other-tools/ImageResize";
+import { TextCounter } from "./pages/other-tools/TextCounter";
 
 export const router = createBrowserRouter([
   {
@@ -31,5 +35,17 @@ export const router = createBrowserRouter([
   {
     path: "/pge/qr-generator",
     Component: QrGenerator,
+  },
+  {
+    path: "/other/pdf-compress",
+    Component: PdfCompress,
+  },
+  {
+    path: "/other/image-resize",
+    Component: ImageResize,
+  },
+  {
+    path: "/other/text-counter",
+    Component: TextCounter,
   },
 ]);

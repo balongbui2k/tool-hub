@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { ToolLayout } from "../../components/ToolLayout";
+import { ToolLayout } from "../../../components/ToolLayout";
+
 import {
   QrCode,
   Upload,
@@ -140,7 +141,7 @@ END:VCARD`;
       // Kích thước khung chứa logo = 20% mã QR (để khớp với preview w-10/200px)
       const logoFull = qrSize * 0.20;
       // Kích thước hình ảnh logo bên trong = 12% mã QR
-      const logoSize = qrSize * 0.12;
+      const logoSize = qrSize * 0.14;
       const x = padding + (qrSize - logoFull) / 2;
       const y = padding + (qrSize - logoFull) / 2;
 
@@ -391,20 +392,17 @@ END:VCARD`;
                       value={qrValue}
                       size={200}
                       level="H"
-                      includeMargin={false}
-                      imageSettings={{
-                        src: logo,
-                        x: undefined,
-                        y: undefined,
-                        height: 40,
-                        width: 40,
-                        excavate: true,
-                      }}
                     />
+                    {/* Logo overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="bg-white px-1.5 py-2 rounded-[10px]">
+                        <img src={logo} width={40} height={60} className="rounded-[10px] w-[50px] h-[40px]" />
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="w-[200px] h-[200px] bg-slate-50 rounded-lg flex flex-col items-center justify-center text-slate-400 gap-3">
-                    <QrCode className="w-12 h-12 opacity-20" />
+                    <QrCode className="w-14 h-14 opacity-20" />
                     <p className="text-xs font-medium px-6 text-center">Vui lòng nhập thông tin để tạo mã QR</p>
                   </div>
                 )}
@@ -427,14 +425,8 @@ END:VCARD`;
           </div>
 
           <div className="bg-brand-pge/5 rounded-2xl p-6 border border-brand-pge/10">
-            <h4 className="text-sm font-bold text-brand-pge mb-2">Mẹo nhỏ & Debug</h4>
+            <h4 className="text-sm font-bold text-brand-pge mb-2">Mẹo nhỏ</h4>
             <ul className="text-xs text-slate-600 space-y-3 leading-relaxed">
-              <li className="flex gap-2">
-                <div className="w-1.5 h-1.5 bg-brand-pge rounded-full mt-1.5 flex-shrink-0" />
-                <span>
-                  <strong>Để quét bằng điện thoại:</strong> Bạn phải truy cập Web này bằng địa chỉ IP (ví dụ: http://192.168.x.x:5173) thay vì localhost.
-                </span>
-              </li>
               <li className="flex gap-2">
                 <div className="w-1.5 h-1.5 bg-brand-pge rounded-full mt-1.5 flex-shrink-0" />
                 <span>QR Code cho danh thiếp (vCard) có thể tự động lưu vào danh bạ điện thoại khi quét.</span>

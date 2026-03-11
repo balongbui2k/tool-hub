@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { ToolLayout } from "../../components/ToolLayout";
-import { FileUploader } from "../../components/FileUploader";
-import { LogViewer } from "../../components/LogViewer";
-import { useBackendTool } from "../../hooks/useBackendTool";
-import { Award, Loader2, CheckCircle2 } from "lucide-react";
+import { ToolLayout } from "../../../components/ToolLayout";
+import { FileUploader } from "../../../components/FileUploader";
+import { LogViewer } from "../../../components/LogViewer";
+import { useBackendTool } from "../../../hooks/useBackendTool";
+import { Award, Loader2, CheckCircle2, Download } from "lucide-react";
 
 export function PgeCertSuite() {
   const [excelFile, setExcelFile] = useState<File | null>(null);
@@ -49,7 +49,19 @@ export function PgeCertSuite() {
                   accept=".xlsx,.xls"
                   onFileSelect={setExcelFile}
                   title="Upload Excel"
-                  description="Cột cần có: Họ và tên, Khóa học..."
+                  description={
+                    <div className="flex flex-col items-center gap-2">
+                      <span>Cột cần có: Họ và tên, Khóa học...</span>
+                      <a 
+                        href="/samples/Danh_Sach_Tham_Gia-Mau.xlsx" 
+                        download 
+                        className="text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1 bg-emerald-50 px-3 py-1 rounded-full text-xs"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Download className="w-3 h-3" /> Tải file mẫu
+                      </a>
+                    </div>
+                  }
                 />
               ) : (
                 <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-100 rounded-xl transition-all">
@@ -79,7 +91,19 @@ export function PgeCertSuite() {
                   accept=".docx"
                   onFileSelect={setDocxFile}
                   title="Upload Word"
-                  description="Các biến: {{Họ_và_tên}}..."
+                  description={
+                    <div className="flex flex-col items-center gap-2">
+                      <span>Các biến: {"{{Họ_và_tên}}"}...</span>
+                      <a 
+                        href="/samples/PGE-Mau_Giay-Mau.docx" 
+                        download 
+                        className="text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 bg-blue-50 px-3 py-1 rounded-full text-xs"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Download className="w-3 h-3" /> Tải file mẫu
+                      </a>
+                    </div>
+                  }
                 />
               ) : (
                 <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-100 rounded-xl transition-all">
