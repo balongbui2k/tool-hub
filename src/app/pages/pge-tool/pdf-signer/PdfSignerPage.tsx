@@ -195,8 +195,8 @@ export function PgePdfSigner() {
         const pdfPage = await pdfDoc.getPage(sig.page);
         const viewport = pdfPage.getViewport({ scale: 1 });
         const sX = width / viewport.width, sY = height / viewport.height;
-        const pX = (sig.x / scale) * sX, pY = height - (((sig.y + sig.height) / scale) * sY);
-        const pW = (sig.width / scale) * sX, pH = (sig.height / scale) * sY;
+        const pX = sig.x * sX, pY = height - (((sig.y + sig.height)) * sY);
+        const pW = sig.width * sX, pH = sig.height * sY;
         if (sig.type === "draw" || sig.type === "image") {
           page.drawImage(await pdfLibDoc.embedPng(sig.data), { x: pX, y: pY, width: pW, height: pH, opacity: sig.opacity });
         } else {

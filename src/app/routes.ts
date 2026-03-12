@@ -38,6 +38,10 @@ export const router = createBrowserRouter([
     Component: QrGenerator,
   },
   {
+    path: "/pge/pdf-signer",
+    Component: PgePdfSigner,
+  },
+  {
     path: "/other/pdf-signer",
     Component: PgePdfSigner,
   },

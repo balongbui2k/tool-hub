@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite'
-import path from 'path'
+import path from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
@@ -13,7 +13,7 @@ export default defineConfig({
   resolve: {
     alias: {
       // Alias @ to the src directory
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(new URL('.', import.meta.url).pathname, './src'),
     },
   },
 
@@ -24,7 +24,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           'pdf-vendor': ['pdf-lib', 'pdfjs-dist'],
-          'react-vendor': ['react', 'react-dom'],
           'ui-vendor': ['lucide-react', 'sonner'],
         }
       }
