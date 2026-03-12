@@ -13,7 +13,8 @@ import {
   Wrench,
   FileSearch,
   Image as ImageIcon,
-  Type
+  Type,
+  PenTool
 } from "lucide-react";
 import { useState } from "react";
 
@@ -92,6 +93,13 @@ const otherTools = [
     description: "Đổi font, đếm chữ, tóm tắt nội dung AI",
     icon: Type,
     href: "/other/text-counter",
+    color: "bg-slate-700",
+  },
+  {
+    title: "Ký Tên PDF",
+    description: "Tạo chữ ký, thêm ngày tháng và đóng dấu văn bản trực tiếp trên PDF",
+    icon: PenTool,
+    href: "/other/pdf-signer",
     color: "bg-slate-700",
   },
 ];

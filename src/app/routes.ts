@@ -5,6 +5,7 @@ import { PgeCertSuite } from "./pages/pge-tool/cert-suite/CertSuitePage";
 import { PgeSplitPdf } from "./pages/pge-tool/split-pdf/SplitPdfPage";
 import { PgeRename } from "./pages/pge-tool/rename/RenamePage";
 import { QrGenerator } from "./pages/pge-tool/qr-generator/QrGeneratorPage";
+import { PgePdfSigner } from "./pages/pge-tool/pdf-signer/PdfSignerPage";
 
 // Other Tools
 import { PdfCompress } from "./pages/other-tools/PdfCompress";
@@ -35,6 +36,10 @@ export const router = createBrowserRouter([
   {
     path: "/pge/qr-generator",
     Component: QrGenerator,
+  },
+  {
+    path: "/other/pdf-signer",
+    Component: PgePdfSigner,
   },
   {
     path: "/other/pdf-compress",
