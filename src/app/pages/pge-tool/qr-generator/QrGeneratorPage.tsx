@@ -196,7 +196,7 @@ END:VCARD`;
           <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
             <button
               onClick={() => setActiveTab("link")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === "link"
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === "link"
                 ? "bg-slate-900 text-white shadow-md"
                 : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                 }`}
@@ -205,7 +205,7 @@ END:VCARD`;
             </button>
             <button
               onClick={() => setActiveTab("file")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === "file"
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === "file"
                 ? "bg-slate-900 text-white shadow-md"
                 : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                 }`}
@@ -214,7 +214,7 @@ END:VCARD`;
             </button>
             <button
               onClick={() => setActiveTab("profile")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === "profile"
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === "profile"
                 ? "bg-slate-900 text-white shadow-md"
                 : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                 }`}
@@ -243,20 +243,20 @@ END:VCARD`;
                 <div className="flex gap-2">
                   <button
                     onClick={() => setLink("https://www.youtube.com")}
-                    className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-bold flex items-center gap-1.5 hover:bg-red-100 transition-colors"
+                    className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-bold flex items-center gap-1.5 hover:bg-red-100 transition-colors cursor-pointer"
                   >
                     <Youtube className="w-3.5 h-3.5" /> Youtube
                   </button>
                   <button
                     onClick={() => setLink("https://www.facebook.com")}
-                    className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold flex items-center gap-1.5 hover:bg-blue-100 transition-colors"
+                    className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold flex items-center gap-1.5 hover:bg-blue-100 transition-colors cursor-pointer"
                   >
                     <Smartphone className="w-3.5 h-3.5" /> Facebook
                   </button>
                 </div>
                 <button
                   onClick={generateLinkQr}
-                  className="w-full mt-4 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                  className="w-full mt-4 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 cursor-pointer"
                 >
                   Tạo mã QR
                 </button>
@@ -284,7 +284,7 @@ END:VCARD`;
                         <p className="font-bold text-slate-900 truncate">{file.name}</p>
                         <p className="text-xs text-slate-500">{(file.size / 1024).toFixed(1)} KB</p>
                       </div>
-                      <button onClick={() => setFile(null)} className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors">
+                      <button onClick={() => setFile(null)} className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors cursor-pointer">
                         <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
@@ -367,7 +367,7 @@ END:VCARD`;
 
                 <button
                   onClick={generateProfileQr}
-                  className="w-full mt-4 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg"
+                  className="w-full mt-4 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg cursor-pointer"
                 >
                   Tạo mã Danh thiếp
                 </button>
@@ -412,7 +412,7 @@ END:VCARD`;
                 <div className="w-full space-y-3">
                   <button
                     onClick={downloadQr}
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-md"
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-md cursor-pointer"
                   >
                     <Download className="w-4 h-4" /> Tải mã QR (.png)
                   </button>

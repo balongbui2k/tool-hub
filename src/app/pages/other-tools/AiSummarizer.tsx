@@ -62,7 +62,7 @@ export function AiSummarizer() {
             <button
               onClick={handleSummarize}
               disabled={!text || summarizing}
-              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
             >
               <Sparkles className="w-5 h-5" />
               {summarizing ? "Summarizing..." : "Summarize"}
@@ -77,7 +77,7 @@ export function AiSummarizer() {
               {summary}
             </div>
             <div className="flex gap-3 mt-4">
-              <button className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors">
+              <button className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
                 Copy Summary
               </button>
               <button

@@ -27,7 +27,7 @@ export function Header() {
                   PGE
                 </Link>
                 <div className="w-px h-5 bg-slate-200"></div>
-                <button className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">
+                <button className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors cursor-pointer">
                   Nội bộ
                 </button>
               </>
@@ -55,7 +55,7 @@ export function Header() {
 
               <button
                 onClick={() => setIsSearchOpen(!isSearchOpen)}
-                className={`p-2 transition-all rounded-full ${isSearchOpen
+                className={`p-2 transition-all rounded-full cursor-pointer ${isSearchOpen
                   ? "absolute right-1 text-slate-400 hover:text-slate-600"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                   }`}

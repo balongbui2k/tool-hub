@@ -87,7 +87,7 @@ export function CaseConverter() {
                     <h3 className="font-semibold text-gray-900">{conversion.label}</h3>
                     <button
                       onClick={() => copyToClipboard(convertedText, conversion.label)}
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors cursor-pointer"
                     >
                       {isCopied ? (
                         <>

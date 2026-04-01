@@ -14,7 +14,16 @@ import {
   FileSearch,
   Image as ImageIcon,
   Type,
-  PenTool
+  PenTool,
+  MessageSquare,
+  FileText,
+  Eraser,
+  Type as CaseIcon,
+  Minimize,
+  Combine,
+  Scissors as SplitIcon,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { useState } from "react";
 
@@ -75,7 +84,14 @@ const pgeTools = [
 
 const otherTools = [
   {
-    title: "Nén & Ghép PDF",
+    title: "Ký Tên PDF",
+    description: "Tạo chữ ký, thêm ngày tháng và đóng dấu văn bản trực tiếp trên PDF",
+    icon: PenTool,
+    href: "/other/pdf-signer",
+    color: "bg-slate-700",
+  },
+  {
+    title: "Nén PDF",
     description: "Tốc độ cao, giữ nguyên chất lượng hồ sơ quan trọng",
     icon: FileSearch,
     href: "/other/pdf-compress",
@@ -83,29 +99,72 @@ const otherTools = [
   },
   {
     title: "Xử lý hình ảnh",
-    description: "Xoá nền, nén ảnh, resize kích thước chuẩn",
+    description: "Resize kích thước chuẩn cho hồ sơ",
     icon: ImageIcon,
     href: "/other/image-resize",
     color: "bg-slate-700",
   },
   {
-    title: "Tiện ích văn bản",
-    description: "Đổi font, đếm chữ, tóm tắt nội dung AI",
+    title: "Đếm chữ",
+    description: "Đếm từ, ký tự và kiểm tra lỗi văn bản",
     icon: Type,
     href: "/other/text-counter",
     color: "bg-slate-700",
   },
   {
-    title: "Ký Tên PDF",
-    description: "Tạo chữ ký, thêm ngày tháng và đóng dấu văn bản trực tiếp trên PDF",
-    icon: PenTool,
-    href: "/other/pdf-signer",
+    title: "AI Summarizer",
+    description: "Tóm tắt văn bản dài ngay lập tức với AI",
+    icon: FileText,
+    href: "/other/ai-summarizer",
+    color: "bg-indigo-600",
+  },
+  {
+    title: "AI Writer",
+    description: "Tạo nội dung chất lượng cao với trí tuệ nhân tạo",
+    icon: MessageSquare,
+    href: "/other/ai-writer",
+    color: "bg-indigo-600",
+  },
+  {
+    title: "Xóa phông ảnh",
+    description: "Tự động xóa nền ảnh chân dung, vật thể với AI",
+    icon: Eraser,
+    href: "/other/background-remover",
+    color: "bg-purple-600",
+  },
+  {
+    title: "Đổi chữ hoa/thường",
+    description: "Chuyển nhanh văn bản sang IN HOA, in thường, chữ câu",
+    icon: CaseIcon,
+    href: "/other/case-converter",
+    color: "bg-slate-700",
+  },
+  {
+    title: "Nén hình ảnh",
+    description: "Giảm dung lượng ảnh không làm mất nhiều chất lượng",
+    icon: Minimize,
+    href: "/other/image-compress",
+    color: "bg-slate-700",
+  },
+  {
+    title: "Ghép PDF",
+    description: "Hợp nhất nhiều tóm tắt thành một file PDF duy nhất",
+    icon: Combine,
+    href: "/other/pdf-merge",
+    color: "bg-slate-700",
+  },
+  {
+    title: "Tách PDF (Công cụ)",
+    description: "Tách file PDF thành các trang lẻ hoặc theo khoảng",
+    icon: SplitIcon,
+    href: "/other/pdf-split",
     color: "bg-slate-700",
   },
 ];
 
 export function Home() {
   const [isDisableFuction] = useState(true);
+  const [showAllOther, setShowAllOther] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
@@ -196,11 +255,25 @@ export function Home() {
             </div>
             <p className="text-slate-500 text-right text-sm font-medium w-full sm:w-auto">Tiện ích hỗ trợ văn phòng hàng ngày</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {otherTools.map((tool) => (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            {otherTools.slice(0, showAllOther ? otherTools.length : 4).map((tool) => (
               <ToolCard key={tool.title} {...tool} />
             ))}
           </div>
+          {otherTools.length > 4 && (
+            <div className="mt-12 flex justify-center">
+              <button 
+                onClick={() => setShowAllOther(!showAllOther)}
+                className="flex items-center gap-2 px-8 py-3 bg-white border-2 border-slate-200 text-slate-900 rounded-full font-bold shadow-sm hover:shadow-md hover:border-slate-300 active:scale-95 transition-all"
+              >
+                {showAllOther ? (
+                  <>Ẩn bớt <ChevronUp className="w-5 h-5" /></>
+                ) : (
+                  <>Xem tất cả ({otherTools.length}) <ChevronDown className="w-5 h-5" /></>
+                )}
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Info Cards */}

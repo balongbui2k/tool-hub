@@ -26,8 +26,13 @@ from typing import Optional
 import pandas as pd
 import PyPDF2
 from docx import Document
+from docx.oxml.ns import qn
 from docxcompose.composer import Composer
 from docxtpl import DocxTemplate
+try:
+    from docx2pdf import convert as _docx2pdf_convert
+except ImportError:
+    _docx2pdf_convert = None
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, JSONResponse, FileResponse
@@ -148,6 +153,25 @@ def format_date_range(start_val, end_val):
     if not e or s == e: return s
     return f"{s} - {e}"
 
+def convert_docx_to_pdf_win32(in_path: str, out_path: str) -> bool:
+    """
+    Chuyển đổi DOCX → PDF bằng Win32COM (comtypes), đáng tin cậy nhất trên Windows.
+    Trả về True nếu thành công, False nếu thất bại.
+    """
+    try:
+        import comtypes.client
+        # wdFormatPDF = 17
+        word = comtypes.client.CreateObject("Word.Application")
+        word.Visible = False
+        doc = word.Documents.Open(in_path)
+        doc.SaveAs(out_path, FileFormat=17)
+        doc.Close()
+        word.Quit()
+        return os.path.exists(out_path)
+    except Exception as e:
+        print(f"❌ convert_docx_to_pdf_win32 lỗi: {e}")
+        return False
+
 def extract_first_date_for_prefix(text):
     match = re.search(r'\d{4}[./-]\d{2}[./-]\d{2}', text)
     if match: return match.group().replace("-", ".").replace("/", ".")
@@ -158,27 +182,79 @@ def extract_first_date_for_prefix(text):
         except: return text
     return text
 
+def sanitize_docx(doc):
+    """Xóa cài đặt Mail Merge khỏi file Word để tránh lỗi pop-up khi mở file"""
+    try:
+        settings = doc.settings.element
+        removed = False
+        # Danh sách các thẻ liên quan đến Mail Merge cần xóa
+        for tag in ['mailMerge', 'mailMergeSource']:
+            el = settings.find(qn(f'w:{tag}'))
+            if el is not None:
+                settings.remove(el)
+                removed = True
+        if removed:
+            print("🧹 Đã xóa cài đặt Mail Merge khỏi file Word mẫu.")
+        return removed
+    except Exception:
+        pass
+    return False
+
+# Mapping các tên cột có thể có trong Excel
+COL_MAP = {
+    'name': ['họ và tên', 'họ tên', 'full name', 'tên học viên', 'tên'],
+    'course': ['khóa học', 'tên khóa học', 'khóa', 'course name'],
+    'start_date': ['thời gian bắt đầu', 'ngày bắt đầu', 'từ ngày', 'start date', 'tg bắt đầu'],
+    'end_date': ['thời gian kết thúc', 'ngày kết thúc', 'đến ngày', 'end date', 'tg kết thúc'],
+    'gender': ['giới tính', 'gender', 'phái'],
+    'birth_date': ['ngày sinh', 'năm sinh', 'birth date', 'ngay sinh'],
+    'sign_date': ['ngày ký', 'ngày ký tên', 'sign date', 'ngày cấp'],
+    'title': ['danh xưng', 'ông/bà', 'title', 'chức danh'],
+}
+
+def get_col_val(row, key, default=None):
+    """Lấy giá trị từ row dựa trên mapping cột"""
+    cols = [str(c).strip().lower() for c in row.index]
+    for candidate in COL_MAP.get(key, []):
+        if candidate in cols:
+            return row[candidate]
+    return default
+
 def read_excel_names(excel_bytes: bytes):
-    """Đọc Excel từ bytes, trả về (prefix, names_slug, names_original, rows_data, c_name_default, s_date_prefix)"""
+    """Đọc Excel từ bytes, tự động tìm sheet phù hợp và trả về dữ liệu"""
     with pd.ExcelFile(io.BytesIO(excel_bytes), engine='openpyxl') as xl:
-        sh = 'Sheet1' if 'Sheet1' in xl.sheet_names else xl.sheet_names[0]
-        df = pd.read_excel(xl, sheet_name=sh)
+        target_sh = None
+        # Ưu tiên tìm sheet chứa cột 'Họ tên'
+        for sh_name in xl.sheet_names:
+            df_header = pd.read_excel(xl, sheet_name=sh_name, nrows=0)
+            cols = [str(c).strip().lower() for c in df_header.columns]
+            if any(x in cols for x in COL_MAP['name']):
+                target_sh = sh_name
+                break
+        
+        if target_sh is None:
+            target_sh = xl.sheet_names[0]
+            
+        df = pd.read_excel(xl, sheet_name=target_sh)
+    
     df.columns = [str(c).strip().lower() for c in df.columns]
 
+    # Tìm thông tin prefix từ dòng đầu tiên
     first_row = df.iloc[0]
-    first_row_start = first_row.get('thời gian bắt đầu')
+    first_row_start = get_col_val(first_row, 'start_date')
+    
     if isinstance(first_row_start, datetime):
         s_date_prefix = first_row_start.strftime("%Y.%m.%d")
     else:
         s_date_prefix = extract_first_date_for_prefix(str(first_row_start))
 
-    c_name_default = str(first_row.get('khóa học', '')).strip()
+    c_name_default = str(get_col_val(first_row, 'course', '')).strip()
     prefix = f"{s_date_prefix}-{course_to_slug(c_name_default)}"
 
     names_original, names_slug, rows_data = [], [], []
     for _, row in df.iterrows():
-        name = row.get('họ và tên') or row.get('họ tên')
-        if not name or str(name) == 'nan': continue
+        name = get_col_val(row, 'name')
+        if not name or str(name).lower() == 'nan': continue
         names_original.append(str(name))
         names_slug.append(name_to_slug(str(name)))
         rows_data.append(row)
@@ -198,6 +274,7 @@ async def cert_suite(
     excel: UploadFile = File(...),
     docx: UploadFile = File(...),
     output_name: str = Form("Tong_Hop_Chung_Chi.docx"),
+    output_format: str = Form("docx"),
 ):
     """Tool 1: Tạo file Word tổng hợp chứng chỉ"""
     logs = []
@@ -217,24 +294,24 @@ async def cert_suite(
 
         for idx, row in enumerate(rows_data):
             name = names_original[idx]
-            c_name = str(row.get('khóa học', c_name_default)).strip()
-            if not c_name or c_name == 'nan': c_name = c_name_default
+            c_name = str(get_col_val(row, 'course', c_name_default)).strip()
+            if not c_name or c_name.lower() == 'nan': c_name = c_name_default
 
-            dx = str(row.get('danh xưng', '')).strip()
+            dx = str(get_col_val(row, 'title', '')).strip()
             if not dx or dx.lower() == 'nan':
-                gt = str(row.get('giới tính', '')).strip().lower()
+                gt = str(get_col_val(row, 'gender', '')).strip().lower()
                 if gt in ['nam', 'm', 'male']: dx = 'Ông'
                 elif gt in ['nữ', 'nu', 'f', 'female']: dx = 'Bà'
                 else: dx = 'Ông/Bà'
 
-            ns = row.get('ngày sinh', '')
+            ns = get_col_val(row, 'birth_date', '')
             if isinstance(ns, datetime): ns = ns.strftime("%d/%m/%Y")
 
-            t_starts = row.get('thời gian bắt đầu')
-            t_ends = row.get('thời gian kết thúc')
+            t_starts = get_col_val(row, 'start_date')
+            t_ends = get_col_val(row, 'end_date')
             tg_hoc = format_date_range(t_starts, t_ends)
 
-            raw_sign = row.get('ngày ký', '')
+            raw_sign = get_col_val(row, 'sign_date', '')
             sign_t = ""
             if isinstance(raw_sign, datetime):
                 sign_t = f"Hà Nội, ngày {raw_sign.day:02d} tháng {raw_sign.month:02d} năm {raw_sign.year}"
@@ -253,6 +330,10 @@ async def cert_suite(
                 sign_t = f"Hà Nội, ngày {sign_d.day:02d} tháng {sign_d.month:02d} năm {sign_d.year}"
 
             tpl = DocxTemplate(io.BytesIO(docx_bytes))
+            
+            # Xóa cài đặt Mail Merge khỏi template trước khi render
+            sanitize_docx(tpl.docx)
+            
             tpl.render({
                 'Danh_xưng': str(dx),
                 'Họ_và_tên': str(name),
@@ -286,9 +367,57 @@ async def cert_suite(
         log("success", f"✅ Xong! Đã tạo file tổng hợp với {len(doc_objs)} chứng chỉ.")
 
         file_bytes = out_buf.getvalue()
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+        if output_format.lower() == "pdf":
+            log("info", "📄 Đang chuyển đổi sang PDF bằng Microsoft Word COM...")
+            try:
+                temp_id = uuid.uuid4().hex[:8]
+                in_path = str((UPLOAD_DIR / f"temp_{temp_id}.docx").absolute())
+                out_path = str((UPLOAD_DIR / f"temp_{temp_id}.pdf").absolute())
+
+                with open(in_path, "wb") as f:
+                    f.write(file_bytes)
+                log("info", f"  ↳ File tạm DOCX: {in_path}")
+
+                # ── Phương án 1: Win32COM (comtypes) - đáng tin cậy nhất ──
+                success = convert_docx_to_pdf_win32(in_path, out_path)
+
+                # ── Phương án 2: Fallback docx2pdf nếu Win32COM thất bại ──
+                if not success and _docx2pdf_convert is not None:
+                    log("warn", "  ⚠ Win32COM thất bại, thử docx2pdf...")
+                    try:
+                        _docx2pdf_convert(in_path, out_path)
+                        success = os.path.exists(out_path)
+                    except Exception as e2:
+                        log("error", f"  ❌ docx2pdf cũng thất bại: {e2}")
+
+                if success:
+                    with open(out_path, "rb") as f:
+                        file_bytes = f.read()
+                    media_type = "application/pdf"
+                    if output_name.lower().endswith(".docx"):
+                        output_name = output_name[:-5] + ".pdf"
+                    elif not output_name.lower().endswith(".pdf"):
+                        output_name += ".pdf"
+                    log("success", f"✅ Chuyển đổi PDF thành công! ({len(file_bytes)//1024} KB)")
+                else:
+                    log("error", "❌ Không thể tạo PDF. Kiểm tra MS Word đang chạy bình thường, không có hộp thoại nào đang chờ.")
+
+                # Dọn file tạm
+                for p in [in_path, out_path]:
+                    if os.path.exists(p):
+                        try: os.remove(p)
+                        except: pass
+
+            except Exception as e:
+                import traceback
+                log("error", f"❌ Lỗi chuyển đổi PDF: {str(e)}")
+                log("error", traceback.format_exc())
+
         return Response(
             content=file_bytes,
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            media_type=media_type,
             headers={
                 "Content-Disposition": f'attachment; filename="{output_name}"',
                 "x-logs": str(len(logs)),

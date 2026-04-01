@@ -61,14 +61,14 @@ export function PdfSplit() {
             <div className="flex gap-4">
               <button
                 onClick={handleSplit}
-                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Download className="w-5 h-5" />
                 Split & Download
               </button>
               <button
                 onClick={() => setFile(null)}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 Upload Another
               </button>

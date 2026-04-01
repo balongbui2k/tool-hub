@@ -57,7 +57,7 @@ export function DraggableSignature({ sig, isSelected, onClick, onUpdate, scale }
           startBase.current = { x: pos.x, y: pos.y, w: size.width, h: size.height };
         } 
       }}
-      className={`group ${isSelected ? 'ring-2 ring-blue-500 shadow-2xl' : ''} select-none`}
+      className={`group ${isSelected ? 'ring-2 ring-blue-500 shadow-2xl' : ''} select-none cursor-move`}
     >
         {isSelected && (
           <div 

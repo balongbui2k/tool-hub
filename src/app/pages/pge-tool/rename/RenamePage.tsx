@@ -8,7 +8,6 @@ import { RefreshCw, Loader2, CheckCircle2, Download } from "lucide-react";
 export function PgeRename() {
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [zipFile, setZipFile] = useState<File | null>(null);
-  const [driveLink, setDriveLink] = useState("");
 
   const { loading, logs, execute, addLog } = useBackendTool({
     endpoint: "/api/rename",
@@ -25,8 +24,6 @@ export function PgeRename() {
     const formData = new FormData();
     formData.append("excel", excelFile);
     formData.append("zip", zipFile);
-    if (driveLink) formData.append("drive_link", driveLink);
-
     await execute(formData, "🏷️ Bắt đầu quét ZIP, kiểm tra và đổi tên...");
   };
 
@@ -63,7 +60,7 @@ export function PgeRename() {
                 />
               ) : (
                 <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <CheckCircle2 className="text-emerald-500 w-5 h-5 shrink-0" />
                     <span className="text-sm font-medium text-emerald-900 truncate">
                       {excelFile.name}
@@ -71,7 +68,7 @@ export function PgeRename() {
                   </div>
                   <button
                     onClick={() => setExcelFile(null)}
-                    className="text-sm text-emerald-600 hover:text-emerald-800 font-bold shrink-0"
+                    className="text-sm text-emerald-600 hover:text-emerald-800 font-bold shrink-0 cursor-pointer"
                   >
                     Thay đổi
                   </button>
@@ -92,7 +89,7 @@ export function PgeRename() {
                 />
               ) : (
                 <div className="flex items-center justify-between p-4 bg-purple-50 border border-purple-100 rounded-xl">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <CheckCircle2 className="text-purple-500 w-5 h-5 shrink-0" />
                     <span className="text-sm font-medium text-purple-900 truncate">
                       {zipFile.name}
@@ -100,26 +97,13 @@ export function PgeRename() {
                   </div>
                   <button
                     onClick={() => setZipFile(null)}
-                    className="text-sm text-purple-600 hover:text-purple-800 font-bold shrink-0"
+                    className="text-sm text-purple-600 hover:text-purple-800 font-bold shrink-0 cursor-pointer"
                   >
                     Thay đổi
                   </button>
                 </div>
               )}
             </div>
-          </div>
-
-          <div className="mb-8">
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              3. Google Drive (Tùy chọn ghi chú)
-            </label>
-            <input
-              type="text"
-              value={driveLink}
-              onChange={(e) => setDriveLink(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-shadow text-slate-700"
-              placeholder="https://drive.google.com/..."
-            />
           </div>
 
           <button

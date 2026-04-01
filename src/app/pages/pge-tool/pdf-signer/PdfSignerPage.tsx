@@ -4,7 +4,7 @@ import { FileUploader } from "../../../components/FileUploader";
 import { 
   PenTool, Upload, Calendar as CalendarIcon, X, Trash2,
   Hand, Pointer, ZoomIn, ZoomOut, Bold, Italic, Underline, ChevronDown, Eraser,
-  Type as LucideType
+  Type as LucideType, Ghost
 } from "lucide-react";
 import SignatureCanvas from "react-signature-canvas";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
@@ -56,7 +56,8 @@ export function PgePdfSigner() {
     color: "#000000",
     bold: false,
     italic: false,
-    underline: false
+    underline: false,
+    opacity: 1
   });
 
   const sigPad = useRef<any>(null);
@@ -118,7 +119,8 @@ export function PgePdfSigner() {
         color: selectedSig.color,
         bold: selectedSig.bold,
         italic: selectedSig.italic,
-        underline: selectedSig.underline
+        underline: selectedSig.underline,
+        opacity: selectedSig.opacity
       });
     }
   }, [selectedId]);
@@ -252,15 +254,15 @@ export function PgePdfSigner() {
     <ToolLayout title="Ký tên PDF" description="Đầy đủ tính năng: In đậm, In nghiêng, Gạch chân văn bản chuyên nghiệp.">
       <div className="flex flex-col h-[calc(100vh-160px)] bg-[#f3f4f6] rounded-3xl border shadow-2xl relative overflow-hidden">
         
-        <div className="bg-white border-b z-30 shadow-sm flex flex-col p-3 gap-3">
-          <div className="flex items-center justify-between">
+        <div className="bg-white border-b z-50 shadow-sm relative">
+          <div className="p-3 flex items-center justify-between relative z-[51] bg-white">
              <div className="flex items-center gap-1.5 p-1 bg-gray-50 border rounded-xl border-gray-100 h-10">
-                <button onClick={() => setToolMode("hand")} className={`p-1.5 px-3 rounded-lg transition-colors ${toolMode === 'hand' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}><Hand className="w-4 h-4" /></button>
-                <button onClick={() => setToolMode("select")} className={`p-1.5 px-3 rounded-lg transition-colors ${toolMode === 'select' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}><Pointer className="w-4 h-4" /></button>
+                <button onClick={() => setToolMode("hand")} className={`p-1.5 px-3 rounded-lg transition-colors cursor-pointer ${toolMode === 'hand' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}><Hand className="w-4 h-4" /></button>
+                <button onClick={() => setToolMode("select")} className={`p-1.5 px-3 rounded-lg transition-colors cursor-pointer ${toolMode === 'select' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}><Pointer className="w-4 h-4" /></button>
                 <div className="w-px h-6 bg-gray-200 mx-1" />
-                <button onClick={() => { setModalTab("draw"); setIsModalOpen(true); }} className="px-4 h-8 hover:bg-white rounded-lg text-xs font-black text-gray-700 flex items-center gap-2 transition-all"><PenTool className="w-3.5 h-3.5 text-blue-500" /> CHỮ KÝ</button>
-                <button onClick={() => addSignatureToList("Nhập văn bản", "text", 200, 40)} className="p-2 hover:bg-white rounded-lg text-orange-500 transition-colors"><LucideType className="w-5 h-5" /></button>
-                <button onClick={() => addSignatureToList(new Date().toLocaleDateString("vi-VN"), "date", 120, 30)} className="p-2 hover:bg-white rounded-lg text-gray-400 transition-colors"><CalendarIcon className="w-5 h-5" /></button>
+                <button onClick={() => { setModalTab("draw"); setIsModalOpen(true); }} className="px-4 h-8 hover:bg-white rounded-lg text-xs font-black text-gray-700 flex items-center gap-2 transition-all cursor-pointer"><PenTool className="w-3.5 h-3.5 text-blue-500" /> CHỮ KÝ</button>
+                <button onClick={() => addSignatureToList("Nhập văn bản", "text", 200, 40)} className="p-2 hover:bg-white rounded-lg text-orange-500 transition-colors cursor-pointer"><LucideType className="w-5 h-5" /></button>
+                <button onClick={() => addSignatureToList(new Date().toLocaleDateString("vi-VN"), "date", 120, 30)} className="p-2 hover:bg-white rounded-lg text-gray-400 transition-colors cursor-pointer"><CalendarIcon className="w-5 h-5" /></button>
                 <div className="w-px h-6 bg-gray-200 mx-1" />
                 <div className="flex items-center gap-2 px-3 h-8 bg-blue-50 rounded-lg border border-blue-100">
                     <span className="text-[10px] uppercase font-black text-blue-400">Trang:</span>
@@ -269,44 +271,72 @@ export function PgePdfSigner() {
              </div>
              <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-2 py-1 border border-gray-100 h-10">
-                   <button onClick={() => setScale(Math.max(0.4, scale - 0.2))} className="p-1 hover:bg-white rounded-md text-gray-300"><ZoomOut className="w-4 h-4" /></button>
+                   <button onClick={() => setScale(Math.max(0.4, scale - 0.2))} className="p-1 hover:bg-white rounded-md text-gray-300 cursor-pointer"><ZoomOut className="w-4 h-4" /></button>
                    <span className="text-[11px] font-black w-12 text-center text-gray-600">{Math.round(scale * 100)}%</span>
-                   <button onClick={() => setScale(Math.min(4, scale + 0.2))} className="p-1 hover:bg-white rounded-md text-gray-300"><ZoomIn className="w-4 h-4" /></button>
+                   <button onClick={() => setScale(Math.min(4, scale + 0.2))} className="p-1 hover:bg-white rounded-md text-gray-300 cursor-pointer"><ZoomIn className="w-4 h-4" /></button>
                 </div>
-                <button onClick={downloadPdf} disabled={!pdfFile} className="px-8 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-30 text-white rounded-2xl font-black text-xs shadow-xl transition-all active:scale-95 h-10 flex items-center tracking-wider uppercase">Xuất File Ngay</button>
+                <button onClick={downloadPdf} disabled={!pdfFile} className="px-8 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-2xl font-black text-xs shadow-xl transition-all active:scale-95 h-10 flex items-center tracking-wider uppercase cursor-pointer">Xuất File Ngay</button>
              </div>
           </div>
 
-          <div className="flex items-center gap-1.5 p-1 px-2 bg-slate-50/50 border border-dashed border-slate-200 rounded-xl min-h-[48px]">
-             <div className="flex items-center gap-3">
-                <div className="relative">
-                  <select value={globalStyle.font} onChange={e => updateSelectedOrGlobal('font', e.target.value)} className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-1.5 text-xs font-bold text-gray-700 pr-10 outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer shadow-sm">
-                    {FONT_OPTIONS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-                </div>
-                <div className="flex items-center bg-white border border-gray-200 rounded-lg shadow-sm">
-                  <input type="number" value={Math.round(globalStyle.fontSize)} onChange={e => updateSelectedOrGlobal('fontSize', Number(e.target.value))} className="w-12 text-xs text-center py-1.5 font-bold outline-none bg-transparent" />
-                  <div className="pr-3 text-[10px] font-black text-gray-300 uppercase">PT</div>
-                </div>
-                <div className="flex bg-white border border-gray-200 rounded-lg shadow-sm p-0.5 gap-0.5">
-                  <button onClick={() => updateSelectedOrGlobal('bold', !globalStyle.bold)} className={`p-1.5 rounded-md transition-all ${globalStyle.bold ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`} title="In đậm"><Bold className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => updateSelectedOrGlobal('italic', !globalStyle.italic)} className={`p-1.5 rounded-md transition-all ${globalStyle.italic ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`} title="In nghiêng"><Italic className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => updateSelectedOrGlobal('underline', !globalStyle.underline)} className={`p-1.5 rounded-md transition-all ${globalStyle.underline ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`} title="Gạch chân"><Underline className="w-3.5 h-3.5" /></button>
-                </div>
-                <div className="w-px h-6 bg-gray-200 mx-1" />
-                <div className="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border border-gray-200 shadow-sm">
-                    <input type="color" value={globalStyle.color} onChange={e => updateSelectedOrGlobal('color', e.target.value)} className="w-6 h-6 rounded-md border-0 p-0 cursor-pointer overflow-hidden" />
-                    <span className="text-[10px] font-black text-gray-400 uppercase">{globalStyle.color}</span>
-                </div>
-                {selectedId && (
-                  <>
-                    <div className="w-px h-6 bg-gray-200 mx-1" />
-                    <button onClick={() => { setSignatures(prev => prev.filter(s => s.id !== selectedId)); setSelectedId(null); }} className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all font-black text-[10px] uppercase shadow-sm"><Trash2 className="w-3.5 h-3.5" /> XÓA</button>
-                  </>
-                )}
-             </div>
-             {!selectedId && <div className="ml-auto text-[10px] font-black text-slate-300 uppercase tracking-widest animate-pulse">Thiết lập mặc định</div>}
+          <div className={`absolute left-0 right-0 z-40 transition-all duration-300 ease-out transform ${selectedId ? 'translate-y-0 opacity-100 visible' : '-translate-y-full opacity-0 invisible'}`}>
+            <div className="px-6 py-2 bg-white/95 backdrop-blur-xl border-b border-slate-200/50 shadow-xl">
+               <div className="flex items-center gap-2 min-w-max overflow-x-auto no-scrollbar">
+                  {/* Text Formatting - Only for Text/Date */}
+                  {(selectedSig?.type === 'text' || selectedSig?.type === 'date') && (
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <select value={globalStyle.font} onChange={e => updateSelectedOrGlobal('font', e.target.value)} className="appearance-none bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-[11px] font-bold text-gray-700 pr-8 outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer shadow-sm">
+                          {FONT_OPTIONS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                        </select>
+                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                      </div>
+                      
+                      <div className="flex items-center bg-white border border-gray-200 rounded-lg shadow-sm h-8 px-1">
+                        <input type="number" value={Math.round(globalStyle.fontSize)} onChange={e => updateSelectedOrGlobal('fontSize', Number(e.target.value))} className="w-10 text-[11px] text-center font-bold outline-none bg-transparent" />
+                        <div className="pr-1 text-[9px] font-black text-gray-300 uppercase">PT</div>
+                      </div>
+
+                      <div className="flex bg-white border border-gray-200 rounded-lg shadow-sm p-0.5 gap-0.5">
+                        <button onClick={() => updateSelectedOrGlobal('bold', !globalStyle.bold)} className={`p-1.5 rounded-md transition-all cursor-pointer ${globalStyle.bold ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`} title="In đậm"><Bold className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => updateSelectedOrGlobal('italic', !globalStyle.italic)} className={`p-1.5 rounded-md transition-all cursor-pointer ${globalStyle.italic ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`} title="In nghiêng"><Italic className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => updateSelectedOrGlobal('underline', !globalStyle.underline)} className={`p-1.5 rounded-md transition-all cursor-pointer ${globalStyle.underline ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`} title="Gạch chân"><Underline className="w-3.5 h-3.5" /></button>
+                      </div>
+
+                      <div className="w-px h-6 bg-gray-200 mx-1" />
+                      
+                      <div className="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border border-gray-200 shadow-sm h-8">
+                          <input type="color" value={globalStyle.color} onChange={e => updateSelectedOrGlobal('color', e.target.value)} className="w-5 h-5 rounded-md border-0 p-0 cursor-pointer overflow-hidden" />
+                          <span className="text-[9px] font-black text-gray-400 uppercase hidden sm:inline">{globalStyle.color}</span>
+                      </div>
+                      <div className="w-px h-6 bg-gray-200 mx-1" />
+                    </div>
+                  )}
+
+                  {/* Opacity - Always visible for selection */}
+                  <div className="flex items-center gap-3 bg-white px-3 py-1 rounded-lg border border-gray-200 shadow-sm h-8">
+                    <div className="flex items-center gap-1.5">
+                      <Ghost className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="text-[9px] font-black text-gray-400 uppercase hidden lg:inline">Độ mờ</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="1" 
+                      step="0.1" 
+                      value={selectedSig?.opacity || 1} 
+                      onChange={e => updateSelectedOrGlobal('opacity', Number(e.target.value))}
+                      className="w-20 lg:w-28 h-1 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    />
+                    <span className="text-[10px] font-black w-7 text-blue-600">
+                      {Math.round((selectedSig?.opacity || 1) * 100)}%
+                    </span>
+                  </div>
+
+                  <div className="w-px h-6 bg-gray-200 mx-1" />
+                  <button onClick={() => { setSignatures(prev => prev.filter(s => s.id !== selectedId)); setSelectedId(null); }} className="flex items-center gap-2 px-3 h-8 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all font-black text-[10px] uppercase shadow-sm cursor-pointer"><Trash2 className="w-3.5 h-3.5" /> XÓA</button>
+               </div>
+            </div>
           </div>
         </div>
 
@@ -330,16 +360,77 @@ export function PgePdfSigner() {
         {isModalOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-2xl rounded-[48px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-              <div className="px-10 py-8 border-b flex justify-between items-center"><h2 className="text-2xl font-black text-slate-800 uppercase">Tạo chữ ký</h2><button onClick={() => setIsModalOpen(false)} className="p-3 hover:bg-gray-100 rounded-full"><X className="w-6 h-6" /></button></div>
+              <div className="px-10 py-8 border-b flex justify-between items-center"><h2 className="text-2xl font-black text-slate-800 uppercase">Tạo chữ ký</h2><button onClick={() => setIsModalOpen(false)} className="p-3 hover:bg-gray-100 rounded-full cursor-pointer"><X className="w-6 h-6" /></button></div>
               <div className="p-10">
                 <div className="flex gap-2 bg-gray-100 p-2 rounded-2xl mb-8">
-                  <button onClick={() => setModalTab("draw")} className={`flex-1 py-4 rounded-xl font-black transition-all ${modalTab === 'draw' ? 'bg-white shadow-xl text-blue-600' : 'text-gray-400'}`}>HÌNH VẼ</button>
-                  <button onClick={() => setModalTab("image")} className={`flex-1 py-4 rounded-xl font-black transition-all ${modalTab === 'image' ? 'bg-white shadow-xl text-blue-600' : 'text-gray-400'}`}>TẢI ẢNH</button>
+                  <button onClick={() => setModalTab("draw")} className={`flex-1 py-4 rounded-xl font-black transition-all cursor-pointer ${modalTab === 'draw' ? 'bg-white shadow-xl text-blue-600' : 'text-gray-400'}`}>HÌNH VẼ</button>
+                  <button onClick={() => setModalTab("image")} className={`flex-1 py-4 rounded-xl font-black transition-all cursor-pointer ${modalTab === 'image' ? 'bg-white shadow-xl text-blue-600' : 'text-gray-400'}`}>TẢI ẢNH</button>
                 </div>
                 {modalTab === 'draw' ? (
                   <div className="space-y-8">
-                    <div className="border border-gray-100 rounded-[32px] bg-white relative overflow-hidden h-80"><SignatureCanvas ref={(ref) => { sigPad.current = ref; }} penColor="#000" canvasProps={{ style: { width: '100%', height: '100%' } }} /><button onClick={() => sigPad.current?.clear()} className="absolute bottom-6 right-6 p-4 bg-white border rounded-2xl text-gray-300 hover:text-red-500 shadow-sm"><Eraser className="w-5 h-5" /></button></div>
-                    <button onClick={saveDrawing} className="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black shadow-2xl shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all uppercase tracking-widest">Lưu và Chèn Chữ Ký</button>
+                    <div className="flex flex-col gap-4">
+                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Chọn màu mực</label>
+                      <div className="flex items-center gap-4">
+                        {[
+                          { name: "Đen", hex: "#000000" },
+                          { name: "Xanh", hex: "#0000CC" },
+                          { name: "Đỏ", hex: "#CC0000" },
+                        ].map((c) => (
+                          <button
+                            key={c.hex}
+                            onClick={() => updateSelectedOrGlobal('color', c.hex)}
+                            className={`group relative flex items-center gap-2 p-2 px-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                              globalStyle.color === c.hex 
+                                ? 'border-blue-600 bg-blue-50' 
+                                : 'border-gray-100 bg-white hover:border-gray-200'
+                            }`}
+                          >
+                            <div 
+                              className="w-4 h-4 rounded-full shadow-inner" 
+                              style={{ backgroundColor: c.hex }} 
+                            />
+                            <span className={`text-xs font-bold ${globalStyle.color === c.hex ? 'text-blue-700' : 'text-gray-500'}`}>
+                              {c.name}
+                            </span>
+                          </button>
+                        ))}
+                        <div className="w-px h-8 bg-gray-200 mx-2" />
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <div className="relative w-10 h-10 rounded-2xl border-2 border-gray-100 bg-white p-1 group-hover:border-gray-300 transition-all flex items-center justify-center">
+                            <input 
+                              type="color" 
+                              value={globalStyle.color} 
+                              onChange={(e) => updateSelectedOrGlobal('color', e.target.value)}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <div 
+                              className="w-full h-full rounded-xl shadow-sm" 
+                              style={{ backgroundColor: globalStyle.color }} 
+                            />
+                          </div>
+                          <span className="text-[10px] font-black text-gray-400 uppercase">Tùy chỉnh</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="border-4 border-gray-50 rounded-[40px] bg-white relative overflow-hidden h-80 shadow-inner">
+                      <SignatureCanvas 
+                        ref={(ref) => { sigPad.current = ref; }} 
+                        penColor={globalStyle.color} 
+                        canvasProps={{ 
+                          style: { width: '100%', height: '100%' },
+                          className: "signature-canvas"
+                        }} 
+                      />
+                      <button 
+                        onClick={() => sigPad.current?.clear()} 
+                        className="absolute bottom-6 right-6 p-4 bg-white border rounded-2xl text-gray-300 hover:text-red-500 hover:border-red-100 shadow-xl transition-all active:scale-90 cursor-pointer"
+                        title="Xóa nháp"
+                      >
+                        <Eraser className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <button onClick={saveDrawing} className="w-full py-6 bg-blue-600 text-white rounded-[32px] font-black shadow-2xl shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all uppercase tracking-widest text-sm cursor-pointer">Lưu và Chèn Chữ Ký</button>
                   </div>
                 ) : (
                   <label className="w-full h-80 border-2 border-dashed border-gray-200 rounded-[40px] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-blue-50 transition-all group">

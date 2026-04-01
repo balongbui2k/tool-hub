@@ -84,7 +84,7 @@ export function ImageResize() {
             <div className="flex gap-4">
               <button
                 onClick={handleResize}
-                className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Download className="w-5 h-5" />
                 Resize & Download
@@ -94,7 +94,7 @@ export function ImageResize() {
                   setFile(null);
                   setPreview("");
                 }}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 Upload Another
               </button>
@@ -106,25 +106,25 @@ export function ImageResize() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <button
                 onClick={() => setDimensions({ width: 1920, height: 1080 })}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:border-purple-500 transition-colors text-sm"
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:border-purple-500 transition-colors text-sm cursor-pointer"
               >
                 1920×1080
               </button>
               <button
                 onClick={() => setDimensions({ width: 1280, height: 720 })}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:border-purple-500 transition-colors text-sm"
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:border-purple-500 transition-colors text-sm cursor-pointer"
               >
                 1280×720
               </button>
               <button
                 onClick={() => setDimensions({ width: 800, height: 600 })}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:border-purple-500 transition-colors text-sm"
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:border-purple-500 transition-colors text-sm cursor-pointer"
               >
                 800×600
               </button>
               <button
                 onClick={() => setDimensions({ width: 400, height: 400 })}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:border-purple-500 transition-colors text-sm"
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:border-purple-500 transition-colors text-sm cursor-pointer"
               >
                 400×400
               </button>

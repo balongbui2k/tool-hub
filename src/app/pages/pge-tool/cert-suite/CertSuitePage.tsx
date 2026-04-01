@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ToolLayout } from "../../../components/ToolLayout";
 import { FileUploader } from "../../../components/FileUploader";
 import { LogViewer } from "../../../components/LogViewer";
@@ -9,13 +9,30 @@ export function PgeCertSuite() {
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [docxFile, setDocxFile] = useState<File | null>(null);
   const [outputName, setOutputName] = useState("Tong_Hop_Chung_Chi.docx");
+  const [outputFormat, setOutputFormat] = useState<"docx" | "pdf">("docx");
 
   const { loading, logs, execute, addLog } = useBackendTool({
     endpoint: "/api/cert-suite",
     downloadFilename: outputName,
-    onSuccessMessage: () => "✅ Xong! Quá trình tạo chứng chỉ tông hoàn tất, đang tải file về...",
+    onSuccessMessage: () => "✅ Xong! Quá trình tạo chứng chỉ tổng hoàn tất, đang tải file về...",
     defaultErrorMessage: "Lỗi server backend (cần chạy python backend.py)",
   });
+
+  // Tự động gợi ý tên file kết quả dựa trên file Excel được chọn
+  useEffect(() => {
+    if (excelFile) {
+      const baseName = excelFile.name.replace(/\.[^/.]+$/, "");
+      setOutputName(`${baseName}.${outputFormat}`);
+    }
+  }, [excelFile]);
+
+  // Cập nhật đuôi file khi đổi định dạng
+  useEffect(() => {
+    if (outputName) {
+      const base = outputName.replace(/\.(docx|pdf)$/i, "");
+      setOutputName(`${base}.${outputFormat}`);
+    }
+  }, [outputFormat]);
 
   const handleRun = async () => {
     if (!excelFile || !docxFile) {
@@ -27,8 +44,10 @@ export function PgeCertSuite() {
     formData.append("excel", excelFile);
     formData.append("docx", docxFile);
     formData.append("output_name", outputName);
+    formData.append("output_format", outputFormat);
 
-    await execute(formData, "📚 Đang đọc dữ liệu từ Excel...");
+    // Truyền outputName lần 2 vào hàm execute để đảm bảo tính reactiviy của hook
+    await execute(formData, "📚 Đang đọc dữ liệu từ Excel...", undefined, outputName);
   };
 
   return (
@@ -65,7 +84,7 @@ export function PgeCertSuite() {
                 />
               ) : (
                 <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-100 rounded-xl transition-all">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <CheckCircle2 className="text-emerald-500 w-5 h-5 shrink-0" />
                     <span className="text-sm font-medium text-emerald-900 truncate">
                       {excelFile.name}
@@ -73,7 +92,7 @@ export function PgeCertSuite() {
                   </div>
                   <button
                     onClick={() => setExcelFile(null)}
-                    className="text-sm text-emerald-600 hover:text-emerald-800 font-bold shrink-0"
+                    className="text-sm text-emerald-600 hover:text-emerald-800 font-bold shrink-0 cursor-pointer"
                   >
                     Thay đổi
                   </button>
@@ -107,7 +126,7 @@ export function PgeCertSuite() {
                 />
               ) : (
                 <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-100 rounded-xl transition-all">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <CheckCircle2 className="text-blue-500 w-5 h-5 shrink-0" />
                     <span className="text-sm font-medium text-blue-900 truncate">
                       {docxFile.name}
@@ -115,7 +134,7 @@ export function PgeCertSuite() {
                   </div>
                   <button
                     onClick={() => setDocxFile(null)}
-                    className="text-sm text-blue-600 hover:text-blue-800 font-bold shrink-0"
+                    className="text-sm text-blue-600 hover:text-blue-800 font-bold shrink-0 cursor-pointer"
                   >
                     Thay đổi
                   </button>
@@ -124,17 +143,47 @@ export function PgeCertSuite() {
             </div>
           </div>
 
-          <div className="mb-8">
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              3. Tên file kết quả tải về
-            </label>
-            <input
-              type="text"
-              value={outputName}
-              onChange={(e) => setOutputName(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm transition-all text-slate-700"
-              placeholder="Tong_Hop_Chung_Chi.docx"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                3. Tên file kết quả tải về
+              </label>
+              <input
+                type="text"
+                value={outputName}
+                onChange={(e) => setOutputName(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm transition-all text-slate-700 font-medium"
+                placeholder="Tong_Hop_Chung_Chi.docx"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                4. Định dạng đầu ra
+              </label>
+              <div className="flex bg-gray-100 p-1 rounded-xl w-full">
+                <button
+                  onClick={() => setOutputFormat("docx")}
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${
+                    outputFormat === "docx"
+                      ? "bg-white text-emerald-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Word (.docx)
+                </button>
+                <button
+                  onClick={() => setOutputFormat("pdf")}
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${
+                    outputFormat === "pdf"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  PDF (.pdf)
+                </button>
+              </div>
+            </div>
           </div>
 
           <button

@@ -73,7 +73,7 @@ export function PdfMerge() {
                   </div>
                   <button
                     onClick={() => removeFile(index)}
-                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
                   >
                     <X className="w-5 h-5 text-gray-600" />
                   </button>

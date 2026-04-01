@@ -97,7 +97,7 @@ export function ImageCompress() {
             <div className="flex gap-4">
               <button
                 onClick={handleDownload}
-                className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Download className="w-5 h-5" />
                 Download Compressed Image
@@ -108,7 +108,7 @@ export function ImageCompress() {
                   setPreview("");
                   setProcessed(false);
                 }}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 Compress Another
               </button>

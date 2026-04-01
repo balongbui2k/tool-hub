@@ -28,18 +28,23 @@ export function useBackendTool({
   const execute = async (
     formData: FormData,
     startMessage: string,
-    onBeforeStart?: () => boolean
+    onBeforeStart?: () => boolean,
+    customFilename?: string
   ) => {
     if (onBeforeStart && !onBeforeStart()) {
       return;
     }
 
+    const finalFilename = customFilename || downloadFilename;
     setLoading(true);
     clearLogs();
     addLog("info", startMessage);
 
     try {
-      const res = await fetch(`http://localhost:8000${endpoint}`, {
+      const backendBase = import.meta.env.VITE_BACKEND_URL
+        ? import.meta.env.VITE_BACKEND_URL.replace(/\/api\/upload$/, "")
+        : `http://${window.location.hostname}:8000`;
+      const res = await fetch(`${backendBase}${endpoint}`, {
         method: "POST",
         body: formData,
       });
@@ -65,7 +70,16 @@ export function useBackendTool({
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = downloadFilename;
+        
+        // Kiểm tra thực tế kiểu file trả về để tránh đặt tên sai đuôi nếu backend bị lỗi chuyển đổi
+        let downloadName = finalFilename;
+        if (blob.type === "application/pdf" && !downloadName.toLowerCase().endsWith(".pdf")) {
+            downloadName = downloadName.replace(/\.docx$/i, "") + ".pdf";
+        } else if (blob.type.includes("wordprocessingml") && downloadName.toLowerCase().endsWith(".pdf")) {
+            downloadName = downloadName.replace(/\.pdf$/i, "") + ".docx";
+        }
+
+        a.download = downloadName;
         a.click();
         URL.revokeObjectURL(url);
       }
