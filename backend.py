@@ -139,11 +139,13 @@ def format_date_str(val):
     s = str(val).strip()
     if not s or s.lower() == 'nan': return None
     if " " in s: s = s.split(" ")[0]
-    s = s.replace(".", "-").replace("/", "-")
-    if len(s) >= 8:
-        for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%Y-%m"):
-            try: return datetime.strptime(s, fmt).strftime("%d/%m/%Y")
-            except: pass
+    
+    # Ưu tiên parse Ngày/Tháng/Năm (VN)
+    for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(s, fmt).strftime("%d/%m/%Y")
+        except:
+            continue
     return s
 
 def format_date_range(start_val, end_val):
@@ -170,6 +172,20 @@ def convert_docx_to_pdf_win32(in_path: str, out_path: str) -> bool:
         return os.path.exists(out_path)
     except Exception as e:
         print(f"❌ convert_docx_to_pdf_win32 lỗi: {e}")
+        return False
+
+def convert_docx_to_pdf_linux(in_path: str, out_dir: str) -> bool:
+    """Chuyển đổi DOCX → PDF bằng LibreOffice (soffice), chuẩn cho Linux/Docker."""
+    try:
+        import subprocess
+        subprocess.run(
+            ['soffice', '--headless', '--convert-to', 'pdf', '--outdir', out_dir, in_path],
+            check=True,
+            capture_output=True
+        )
+        return True
+    except Exception as e:
+        print(f"❌ convert_docx_to_pdf_linux lỗi: {e}")
         return False
 
 def extract_first_date_for_prefix(text):
@@ -235,7 +251,9 @@ def read_excel_names(excel_bytes: bytes):
         if target_sh is None:
             target_sh = xl.sheet_names[0]
             
-        df = pd.read_excel(xl, sheet_name=target_sh)
+        # Đọc tất cả dưới dạng chuỗi (str) để lấy chính xác những gì hiển thị trong Excel, 
+        # tránh việc thư viện tự động chuyển đổi ngày tháng gây đảo Day/Month.
+        df = pd.read_excel(xl, sheet_name=target_sh, dtype=str)
     
     df.columns = [str(c).strip().lower() for c in df.columns]
 
@@ -286,6 +304,16 @@ async def cert_suite(
         excel_bytes = await excel.read()
         docx_bytes = await docx.read()
 
+        # Kiểm tra nhanh định dạng file để tránh lỗi ValueError khi chọn nhầm file Excel vào ô Word
+        if not docx.filename.lower().endswith(".docx"):
+            return JSONResponse({"logs": logs, "error": f"File mẫu '{docx.filename}' không phải là định dạng Word (.docx). Vui lòng kiểm tra lại!"}, status_code=400)
+        
+        # Thử kiểm tra nội dung file bằng cách đọc header (optional nhưng an toàn)
+        if b"word/document.xml" not in docx_bytes[:8000] and b"word/_rels" not in docx_bytes[:8000]:
+             # Nếu file chứa 'spreadsheetml', chắc chắn là chọn nhầm file Excel
+             if b"spreadsheetml" in docx_bytes[:8000]:
+                 return JSONResponse({"logs": logs, "error": "Bạn đã chọn nhầm file Excel vào mục 'Biểu mẫu Word'. Vui lòng chọn lại đúng file .docx!"}, status_code=400)
+
         log("info", "📚 Đang đọc dữ liệu từ Excel...")
         prefix, names_slug, names_original, rows_data, c_name_default, s_date_prefix = read_excel_names(excel_bytes)
         log("info", f"✓ Tìm thấy {len(names_original)} học viên. Prefix: {prefix}")
@@ -322,7 +350,7 @@ async def cert_suite(
                     sign_t = f"Hà Nội, ngày {d:02d} tháng {m:02d} năm {y}"
 
             if not sign_t:
-                ref = pd.to_datetime(t_starts, errors='coerce')
+                ref = pd.to_datetime(t_starts, errors='coerce', dayfirst=True)
                 if pd.isna(ref):
                     try: ref = datetime.strptime(s_date_prefix, "%Y.%m.%d")
                     except: ref = datetime.now()
@@ -380,17 +408,32 @@ async def cert_suite(
                     f.write(file_bytes)
                 log("info", f"  ↳ File tạm DOCX: {in_path}")
 
-                # ── Phương án 1: Win32COM (comtypes) - đáng tin cậy nhất ──
-                success = convert_docx_to_pdf_win32(in_path, out_path)
+                # ── XỬ LÝ CHUYỂN ĐỔI PDF ──
+                success = False
+                if sys.platform == "win32":
+                    # Phương án 1: Win32COM (comtypes) - đáng tin cậy nhất trên Windows
+                    success = convert_docx_to_pdf_win32(in_path, out_path)
 
-                # ── Phương án 2: Fallback docx2pdf nếu Win32COM thất bại ──
-                if not success and _docx2pdf_convert is not None:
-                    log("warn", "  ⚠ Win32COM thất bại, thử docx2pdf...")
-                    try:
-                        _docx2pdf_convert(in_path, out_path)
-                        success = os.path.exists(out_path)
-                    except Exception as e2:
-                        log("error", f"  ❌ docx2pdf cũng thất bại: {e2}")
+                    # Phương án 2: Fallback docx2pdf nếu Win32COM thất bại
+                    if not success and _docx2pdf_convert is not None:
+                        log("warn", "  ⚠ Win32COM thất bại, thử docx2pdf...")
+                        try:
+                            _docx2pdf_convert(in_path, out_path)
+                            success = os.path.exists(out_path)
+                        except Exception as e2:
+                            log("error", f"  ❌ docx2pdf cũng thất bại: {e2}")
+                else:
+                    # Phương án cho Linux/Docker: LibreOffice (soffice)
+                    log("info", "  📄 Đang chuyển đổi bằng LibreOffice (soffice)...")
+                    success = convert_docx_to_pdf_linux(in_path, str(UPLOAD_DIR.absolute()))
+                    
+                    # LibreOffice mặc định tạo file tên giống file gốc nhưng đuôi .pdf
+                    expected_out = in_path.replace(".docx", ".pdf")
+                    if os.path.exists(expected_out):
+                        # Đổi tên về out_path (temp_xxxx.pdf)
+                        if os.path.exists(out_path): os.remove(out_path)
+                        os.rename(expected_out, out_path)
+                        success = True
 
                 if success:
                     with open(out_path, "rb") as f:
@@ -402,7 +445,7 @@ async def cert_suite(
                         output_name += ".pdf"
                     log("success", f"✅ Chuyển đổi PDF thành công! ({len(file_bytes)//1024} KB)")
                 else:
-                    log("error", "❌ Không thể tạo PDF. Kiểm tra MS Word đang chạy bình thường, không có hộp thoại nào đang chờ.")
+                    log("error", "❌ Không thể tạo PDF. Trên Windows hãy kiểm tra MS Word, trên Linux hãy kiểm tra LibreOffice.")
 
                 # Dọn file tạm
                 for p in [in_path, out_path]:
