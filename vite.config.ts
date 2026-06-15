@@ -30,6 +30,9 @@ export default defineConfig({
             if (id.includes('pdfjs-dist')) {
               return 'pdfjs';
             }
+            if (id.includes('docx')) {
+              return 'docx-vendor';
+            }
             if (id.includes('lucide-react') || id.includes('sonner')) {
               return 'ui-vendor';
             }

@@ -7,6 +7,7 @@ import { PgeRename } from "./pages/pge-tool/rename/RenamePage";
 import { QrGenerator } from "./pages/pge-tool/qr-generator/QrGeneratorPage";
 import { PgePdfSigner } from "./pages/pge-tool/pdf-signer/PdfSignerPage";
 import { TrainingDossier } from "./pages/pge-tool/training-dossier/TrainingDossierPage";
+import { BbntPage } from "./pages/pge-tool/bbnt/BbntPage";
 
 // Other Tools
 import { PdfCompress } from "./pages/other-tools/PdfCompress";
@@ -52,6 +53,10 @@ export const router = createBrowserRouter([
   {
     path: "/pge/pdf-signer",
     Component: PgePdfSigner,
+  },
+  {
+    path: "/pge/bbnt",
+    Component: BbntPage,
   },
   {
     path: "/other/pdf-signer",
