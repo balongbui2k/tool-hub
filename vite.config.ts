@@ -24,8 +24,11 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('pdf-lib') || id.includes('pdfjs-dist')) {
-              return 'pdf-vendor';
+            if (id.includes('pdf-lib')) {
+              return 'pdf-lib';
+            }
+            if (id.includes('pdfjs-dist')) {
+              return 'pdfjs';
             }
             if (id.includes('lucide-react') || id.includes('sonner')) {
               return 'ui-vendor';
