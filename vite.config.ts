@@ -22,9 +22,15 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'pdf-vendor': ['pdf-lib', 'pdfjs-dist'],
-          'ui-vendor': ['lucide-react', 'sonner'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('pdf-lib') || id.includes('pdfjs-dist')) {
+              return 'pdf-vendor';
+            }
+            if (id.includes('lucide-react') || id.includes('sonner')) {
+              return 'ui-vendor';
+            }
+          }
         }
       }
     }
