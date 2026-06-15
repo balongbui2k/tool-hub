@@ -23,7 +23,8 @@ import {
   Combine,
   Scissors as SplitIcon,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  FileSpreadsheet
 } from "lucide-react";
 import { useState } from "react";
 
@@ -52,6 +53,13 @@ const pglTools = [
 ];
 
 const pgeTools = [
+  {
+    title: "Tạo Hồ Sơ Đào Tạo",
+    description: "Quét danh sách học viên, xuất hồ sơ (BM03 + Danh sách điểm danh)",
+    icon: FileSpreadsheet,
+    href: "/pge/training-dossier",
+    color: "bg-brand-pge",
+  },
   {
     title: "Xuất Chứng Chỉ Tổng",
     description: "Tạo file Word chứng chỉ hàng loạt từ danh sách Excel mẫu",

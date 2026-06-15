@@ -6,6 +6,7 @@ import { PgeSplitPdf } from "./pages/pge-tool/split-pdf/SplitPdfPage";
 import { PgeRename } from "./pages/pge-tool/rename/RenamePage";
 import { QrGenerator } from "./pages/pge-tool/qr-generator/QrGeneratorPage";
 import { PgePdfSigner } from "./pages/pge-tool/pdf-signer/PdfSignerPage";
+import { TrainingDossier } from "./pages/pge-tool/training-dossier/TrainingDossierPage";
 
 // Other Tools
 import { PdfCompress } from "./pages/other-tools/PdfCompress";
@@ -31,6 +32,10 @@ export const router = createBrowserRouter([
   {
     path: "/pge/cert-suite",
     Component: PgeCertSuite,
+  },
+  {
+    path: "/pge/training-dossier",
+    Component: TrainingDossier,
   },
   {
     path: "/pge/split-pdf",
