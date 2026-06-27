@@ -44,8 +44,19 @@ export function TrainingDossier() {
   const [exportedCourses, setExportedCourses] = useState<Set<string>>(new Set());
   const [logs, setLogs] = useState<LogLine[]>([]);
 
+  // Step 3: Certificate export
+  const [certDocxFile, setCertDocxFile] = useState<File | null>(null);
+  const [certOutputFormat, setCertOutputFormat] = useState<"docx" | "pdf">("docx");
+  const [certLoading, setCertLoading] = useState(false);
+  const [certLogs, setCertLogs] = useState<LogLine[]>([]);
+  const [certExported, setCertExported] = useState(false);
+
   const addLog = (type: LogLine["type"], text: string) => {
     setLogs((prev) => [...prev, { type, text }]);
+  };
+
+  const addCertLog = (type: LogLine["type"], text: string) => {
+    setCertLogs((prev) => [...prev, { type, text }]);
   };
 
   const backendBase =
@@ -197,6 +208,97 @@ export function TrainingDossier() {
     [excelFile, backendBase]
   );
 
+  // ── Step 3: Export certificates directly ──
+  const handleExportCerts = useCallback(async () => {
+    if (!excelFile) return;
+
+    setCertLoading(true);
+    setCertLogs([]);
+    addCertLog("info", "📚 Đang chuẩn bị xuất chứng chỉ tổng...");
+
+    try {
+      // Get the Word template - either user-uploaded or default
+      let docxBlob: Blob;
+      if (certDocxFile) {
+        docxBlob = certDocxFile;
+        addCertLog("info", `📄 Sử dụng biểu mẫu: ${certDocxFile.name}`);
+      } else {
+        addCertLog("info", "📥 Đang tải biểu mẫu chứng chỉ mặc định...");
+        const docxRes = await fetch("/samples/PGE-Mau_Giay-Mau.docx");
+        if (!docxRes.ok) {
+          addCertLog("error", "Không tìm thấy file mẫu PGE-Mau_Giay-Mau.docx trong /samples/.");
+          return;
+        }
+        docxBlob = await docxRes.blob();
+      }
+
+      const baseName = excelFile.name.replace(/\.[^/.]+$/, "");
+      const outputName = `${baseName}.${certOutputFormat}`;
+
+      const formData = new FormData();
+      formData.append("excel", excelFile);
+      formData.append(
+        "docx",
+        new File([docxBlob], "template.docx", {
+          type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        })
+      );
+      formData.append("output_name", outputName);
+      formData.append("output_format", certOutputFormat);
+
+      addCertLog("info", "⚙️ Đang tạo chứng chỉ cho tất cả học viên...");
+
+      const res = await fetch(`${backendBase}/api/cert-suite`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        let errorData: any = {};
+        try {
+          errorData = await res.json();
+        } catch {
+          errorData.error = "Lỗi server.";
+        }
+        if (errorData.logs) {
+          setCertLogs((prev) => [...prev, ...errorData.logs]);
+        }
+        addCertLog("error", errorData.error || "Lỗi khi xuất chứng chỉ.");
+        return;
+      }
+
+      addCertLog("success", "✅ Xong! Đang tải file chứng chỉ tổng về...");
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+
+      // Determine correct filename based on actual response type
+      let downloadName = outputName;
+      const disposition = res.headers.get("Content-Disposition");
+      if (disposition) {
+        const match = disposition.match(/filename="?(.+?)"?$/);
+        if (match) downloadName = match[1];
+      }
+
+      if (blob.type === "application/pdf" && !downloadName.toLowerCase().endsWith(".pdf")) {
+        downloadName = downloadName.replace(/\.docx$/i, "") + ".pdf";
+      } else if (blob.type.includes("wordprocessingml") && downloadName.toLowerCase().endsWith(".pdf")) {
+        downloadName = downloadName.replace(/\.pdf$/i, "") + ".docx";
+      }
+
+      a.download = downloadName;
+      a.click();
+      URL.revokeObjectURL(url);
+      setCertExported(true);
+    } catch (e: any) {
+      addCertLog("error", `Lỗi kết nối backend: ${e.message}`);
+    } finally {
+      setCertLoading(false);
+    }
+  }, [excelFile, certDocxFile, certOutputFormat, backendBase]);
+
   const totalParticipants = courses.reduce((a, c) => a + c.count, 0);
   const hasExported = exportedCourses.size > 0;
 
@@ -211,7 +313,7 @@ export function TrainingDossier() {
           {[
             { label: "Upload Excel", done: !!excelFile },
             { label: "Chọn & Xuất", done: hasExported },
-            { label: "Chứng chỉ tổng", done: false },
+            { label: "Chứng chỉ tổng", done: certExported },
           ].map((step, i) => (
             <div key={i} className="flex items-center gap-2">
               <div
@@ -256,6 +358,8 @@ export function TrainingDossier() {
                 setCourses([]);
                 setScanned(false);
                 setExportedCourses(new Set());
+                setCertExported(false);
+                setCertLogs([]);
               }}
               title="Upload file Danh Sách Tham Gia"
               description={
@@ -287,6 +391,8 @@ export function TrainingDossier() {
                     setCourses([]);
                     setScanned(false);
                     setExportedCourses(new Set());
+                    setCertExported(false);
+                    setCertLogs([]);
                   }}
                   className="text-sm text-emerald-600 hover:text-emerald-800 font-bold shrink-0 cursor-pointer"
                 >
@@ -401,7 +507,7 @@ export function TrainingDossier() {
           </div>
         )}
 
-        {/* ── Step 3: Continue to Cert Suite ── */}
+        {/* ── Step 3: Export Certificates (Integrated) ── */}
         {hasExported && (
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-200 p-8 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-3">
@@ -409,50 +515,129 @@ export function TrainingDossier() {
               Bước 3: Xuất chứng chỉ tổng
             </h2>
             <p className="text-sm text-gray-600 mb-5 leading-relaxed">
-              Hồ sơ đào tạo đã được tạo xong. Tiếp tục sang trang <strong>"Xuất Chứng Chỉ Tổng"</strong> để
-              tạo file chứng chỉ Word/PDF cho từng học viên.
-              <br />
-              <span className="text-gray-500 mt-1 inline-block">
-                Tại trang tiếp theo: upload file <code className="bg-gray-200 px-1 rounded text-xs">.xlsx</code> vừa xuất
-                + chọn biểu mẫu chứng chỉ Word <code className="bg-gray-200 px-1 rounded text-xs">.docx</code>
-              </span>
+              Tự động sử dụng file <strong>{excelFile?.name}</strong> đã upload ở Bước 1 để xuất chứng chỉ.
+              Chứng chỉ sẽ chứa <strong>đầy đủ tất cả học viên</strong> (không tách theo đơn vị).
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Word template selection */}
+              <div className="space-y-3">
+                <label className="block text-sm font-semibold text-gray-800">
+                  Biểu mẫu chứng chỉ Word
+                </label>
+                {!certDocxFile ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 p-3 bg-white/70 border border-amber-200 rounded-xl">
+                      <FileText className="w-5 h-5 text-blue-500 shrink-0" />
+                      <span className="text-sm text-gray-700 flex-1">
+                        Mặc định: <strong>PGE-Mau_Giay-Mau.docx</strong>
+                      </span>
+                    </div>
+                    <label className="flex items-center gap-2 text-xs text-amber-700 hover:text-amber-900 cursor-pointer font-semibold">
+                      <input
+                        type="file"
+                        accept=".docx"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) setCertDocxFile(e.target.files[0]);
+                        }}
+                      />
+                      <FileText className="w-3.5 h-3.5" />
+                      Hoặc chọn biểu mẫu khác...
+                    </label>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CheckCircle2 className="text-blue-500 w-4 h-4 shrink-0" />
+                      <span className="text-sm font-medium text-blue-900 truncate">
+                        {certDocxFile.name}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setCertDocxFile(null)}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-bold shrink-0 cursor-pointer"
+                    >
+                      Dùng mặc định
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Output format */}
+              <div className="space-y-3">
+                <label className="block text-sm font-semibold text-gray-800">
+                  Định dạng đầu ra
+                </label>
+                <div className="flex bg-white/70 p-1 rounded-xl w-full border border-amber-200">
+                  <button
+                    onClick={() => setCertOutputFormat("docx")}
+                    className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all cursor-pointer ${
+                      certOutputFormat === "docx"
+                        ? "bg-white text-amber-700 shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    Word (.docx)
+                  </button>
+                  <button
+                    onClick={() => setCertOutputFormat("pdf")}
+                    className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all cursor-pointer ${
+                      certOutputFormat === "pdf"
+                        ? "bg-white text-blue-600 shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    PDF (.pdf)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleExportCerts}
+              disabled={certLoading}
+              className={`w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold text-lg transition-all shadow-sm hover:shadow-md active:scale-[0.99] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                certExported
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                  : "bg-amber-600 text-white hover:bg-amber-700"
+              }`}
+            >
+              {certLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : certExported ? (
+                <CheckCircle2 className="w-6 h-6" />
+              ) : (
+                <Award className="w-6 h-6" />
+              )}
+              {certLoading
+                ? "Đang xuất chứng chỉ..."
+                : certExported
+                ? "Xuất lại chứng chỉ tổng"
+                : "Xuất chứng chỉ tổng"}
+            </button>
+
+            {/* Link to full cert-suite page for advanced options */}
+            <div className="mt-4 flex items-center justify-center">
               <button
                 onClick={() => navigate("/pge/cert-suite")}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-amber-600 text-white rounded-xl hover:bg-amber-700 active:scale-[0.99] transition-all font-bold shadow-sm hover:shadow-md cursor-pointer"
+                className="text-sm text-amber-700 hover:text-amber-900 font-semibold flex items-center gap-1 cursor-pointer"
               >
-                <Award className="w-5 h-5" />
-                Tiếp tục xuất chứng chỉ tổng
-                <ArrowRight className="w-5 h-5" />
+                Hoặc mở trang Xuất Chứng Chỉ để tùy chỉnh thêm
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="flex items-start gap-3 p-3 bg-white/60 rounded-lg border border-amber-100">
-                <FileSpreadsheet className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">File Excel vừa xuất</p>
-                  <p className="text-xs text-gray-500">
-                    Chứa danh sách học viên (cột Họ tên, Khóa học, Ngày...)
-                  </p>
-                </div>
+            {/* Cert Logs */}
+            {certLogs.length > 0 && (
+              <div className="mt-4">
+                <LogViewer logs={certLogs} />
               </div>
-              <div className="flex items-start gap-3 p-3 bg-white/60 rounded-lg border border-amber-100">
-                <FileText className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">Biểu mẫu chứng chỉ Word</p>
-                  <p className="text-xs text-gray-500">
-                    File mẫu .docx có các biến {"{{Họ_và_tên}}"}, {"{{Khóa_học}}"}...
-                  </p>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         )}
 
-        {/* ── Log Viewer ── */}
+        {/* ── Log Viewer (Step 2) ── */}
         <LogViewer logs={logs} />
       </div>
     </ToolLayout>

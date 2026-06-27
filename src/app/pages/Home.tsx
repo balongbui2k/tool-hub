@@ -88,6 +88,13 @@ const pgeTools = [
     href: "/pge/qr-generator",
     color: "bg-brand-pge",
   },
+  {
+    title: "Tạo Biên Bản Nghiệm Thu",
+    description: "Tạo Biên bản nghiệm thu (PGE → PGL) đính kèm Phụ lục I & II dạng Word .docx",
+    icon: FileText,
+    href: "/pge/bbnt",
+    color: "bg-brand-pge",
+  },
 ];
 
 const otherTools = [

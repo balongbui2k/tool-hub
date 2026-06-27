@@ -214,10 +214,9 @@ def sanitize_docx(doc):
         settings = doc.settings.element
         removed = False
         # Danh sách các thẻ liên quan đến Mail Merge cần xóa
-        for tag in ['mailMerge', 'mailMergeSource']:
-            el = settings.find(qn(f'w:{tag}'))
-            if el is not None:
-                settings.remove(el)
+        for child in list(settings):
+            if 'mailMerge' in child.tag:
+                settings.remove(child)
                 removed = True
         if removed:
             print("🧹 Đã xóa cài đặt Mail Merge khỏi file Word mẫu.")
@@ -247,24 +246,18 @@ def get_col_val(row, key, default=None):
     return default
 
 def read_excel_names(excel_bytes: bytes):
-    """Đọc Excel từ bytes, tự động tìm sheet phù hợp và trả về dữ liệu"""
-    with pd.ExcelFile(io.BytesIO(excel_bytes), engine='openpyxl') as xl:
-        target_sh = None
-        # Ưu tiên tìm sheet chứa cột 'Họ tên'
-        for sh_name in xl.sheet_names:
-            df_header = pd.read_excel(xl, sheet_name=sh_name, nrows=0)
-            cols = [str(c).strip().lower() for c in df_header.columns]
-            if any(x in cols for x in COL_MAP['name']):
-                target_sh = sh_name
-                break
-        
-        if target_sh is None:
-            target_sh = xl.sheet_names[0]
-            
-        # Không dùng dtype=str để tránh việc pandas tự convert ngày tháng thành chuỗi theo locale hệ thống
-        # Chúng ta sẽ tự format lại sau.
-        df = pd.read_excel(xl, sheet_name=target_sh)
+    """Đọc Excel từ bytes, ưu tiên đọc sheet đang active giống như các bước trước để đồng bộ dữ liệu"""
+    import openpyxl
+    wb = openpyxl.load_workbook(io.BytesIO(excel_bytes), data_only=True, read_only=True)
+    target_sh = wb.active.title
+    wb.close()
     
+    with pd.ExcelFile(io.BytesIO(excel_bytes), engine='openpyxl') as xl:
+        if target_sh in xl.sheet_names:
+            df = pd.read_excel(xl, sheet_name=target_sh)
+        else:
+            df = pd.read_excel(xl, sheet_name=xl.sheet_names[0])
+            
     df.columns = [str(c).strip().lower() for c in df.columns]
 
     # Tìm thông tin prefix từ dòng đầu tiên
@@ -327,6 +320,10 @@ async def cert_suite(
         log("info", "📚 Đang đọc dữ liệu từ Excel...")
         prefix, names_slug, names_original, rows_data, c_name_default, s_date_prefix = read_excel_names(excel_bytes)
         log("info", f"✓ Tìm thấy {len(names_original)} học viên. Prefix: {prefix}")
+
+        # Override output_name theo yêu cầu
+        safe_course = _td_make_filename_safe(c_name_default) if c_name_default else "Khong_Ten"
+        output_name = f"{s_date_prefix}-Chung_Chi-{safe_course}.docx"
 
         doc_objs = []
 
@@ -403,6 +400,8 @@ async def cert_suite(
         for i in range(1, len(doc_objs)):
             master.add_page_break()
             comp.append(doc_objs[i])
+
+        sanitize_docx(comp.doc)
 
         out_buf = io.BytesIO()
         comp.save(out_buf)
@@ -781,6 +780,204 @@ async def td_get_courses(excel: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _td_classify_unit(bo_phan: str) -> str:
+    """Phân loại đơn vị: PGL, PGU, hoặc tên đơn vị ngoài."""
+    bp = str(bo_phan).strip().upper()
+    if "PGL" in bp:
+        return "PGL"
+    if "PGU" in bp:
+        return "PGU"
+    # Đơn vị ngoài - giữ nguyên tên gốc
+    return str(bo_phan).strip() if bo_phan and str(bo_phan).strip() else "Khac"
+
+
+def _td_generate_docx(tpl_docx_bytes: bytes, course: dict, participants: list,
+                       dt_bd, dt_kt) -> io.BytesIO:
+    """Tạo file BM03 DOCX cho một nhóm participants."""
+    doc = Document(io.BytesIO(tpl_docx_bytes))
+
+    # Fill table 0 (Header)
+    t0 = doc.tables[0]
+    date_range = f"{dt_bd.day:02d}/{dt_bd.month:02d}/{dt_bd.year}"
+    if dt_kt and dt_kt.date() != dt_bd.date():
+        date_range += " - " + f"{dt_kt.day:02d}/{dt_kt.month:02d}/{dt_kt.year}"
+    _td_set_cell_mixed(t0.cell(0, 0), [("Ngày: ", True), (date_range, False)])
+
+    gv = course.get("giang_vien", "")
+    if gv and gv != "Chưa xác định":
+        _td_set_cell_mixed(t0.cell(3, 1), [("Giảng viên: ", True), (gv, False)])
+
+    _td_set_cell_mixed(t0.cell(1, 1), [(course["ten_lop"], False)])
+
+    # Table 2 (Signatures)
+    if len(doc.tables) > 2:
+        t2 = doc.tables[2]
+        hanoi_date = f"Hà Nội, ngày {dt_bd.day} tháng {dt_bd.month} năm {dt_bd.year}"
+        _td_set_cell_mixed(t2.cell(0, 1), [(hanoi_date, False, True)])
+
+        if gv and gv != "Chưa xác định":
+            _td_set_cell_mixed(t2.cell(1, 1), [("GIẢNG VIÊN", True)])
+            if len(t2.rows) > 3:
+                _td_set_cell_mixed(t2.cell(3, 1), [(gv, False)])
+
+    # Fill table 1 (Participants)
+    t1 = doc.tables[1]
+    template_row = t1.rows[1]
+    template_tr = template_row._tr
+    for i, p in enumerate(participants):
+        new_tr = copy.deepcopy(template_tr)
+        cells = new_tr.findall(qn('w:tc'))
+        data_to_fill = [f"{i+1}.", p["ho_ten"], p["bo_phan"]]
+        for idx, txt in enumerate(data_to_fill):
+            if txt is not None and idx < len(cells):
+                tc_para = cells[idx].findall(qn('w:p'))[0]
+
+                if idx == 0:
+                    pPrs = tc_para.findall(qn('w:pPr'))
+                    if not pPrs:
+                        pPr = OxmlElement('w:pPr')
+                        tc_para.insert(0, pPr)
+                    else:
+                        pPr = pPrs[0]
+                    for numPr in pPr.findall(qn('w:numPr')): pPr.remove(numPr)
+                    for ind in pPr.findall(qn('w:ind')): pPr.remove(ind)
+                    jcs = pPr.findall(qn('w:jc'))
+                    if not jcs:
+                        jc = OxmlElement('w:jc')
+                        pPr.append(jc)
+                    else:
+                        jc = jcs[0]
+                    jc.set(qn('w:val'), 'center')
+
+                for r in tc_para.findall(qn('w:r')): tc_para.remove(r)
+                nr = OxmlElement('w:r')
+                nr.append(_td_make_rPr(bold=False))
+                nt = OxmlElement('w:t')
+                nt.text = str(txt)
+                nr.append(nt)
+                tc_para.append(nr)
+
+        template_tr.getparent().insert(list(template_tr.getparent()).index(template_tr), new_tr)
+    template_tr.getparent().remove(template_tr)
+
+    docx_buf = io.BytesIO()
+    doc.save(docx_buf)
+    docx_buf.seek(0)
+    return docx_buf
+
+
+def _td_generate_xlsx(tpl_xlsx_bytes: bytes, course: dict, participants: list) -> io.BytesIO:
+    """Tạo file XLSX danh sách điểm danh cho một nhóm participants."""
+    wb_tpl = openpyxl.load_workbook(io.BytesIO(tpl_xlsx_bytes))
+    ws_tpl = wb_tpl.active
+    ws_tpl["F4"].value = course["ten_lop"]
+    ws_tpl["F5"].value = "Ông Bùi Bá Long                       Điện thoại: 0327 706 996"
+
+    # Capture row 7 styles
+    row7_styles = []
+    for col_idx in range(1, 11):
+        cell = ws_tpl.cell(row=7, column=col_idx)
+        row7_styles.append({
+            "font": copy.copy(cell.font) if cell.font else None,
+            "fill": copy.copy(cell.fill) if cell.fill else None,
+            "border": copy.copy(cell.border) if cell.border else None,
+            "alignment": copy.copy(cell.alignment) if cell.alignment else None,
+            "number_format": cell.number_format,
+        })
+    row7_height = ws_tpl.row_dimensions[7].height if 7 in ws_tpl.row_dimensions else 25
+
+    # Capture Lưu ý section
+    luuy_header_font = copy.copy(ws_tpl["A10"].font)
+    luuy_header_align = copy.copy(ws_tpl["A10"].alignment)
+    luuy_notes_font = copy.copy(ws_tpl["A11"].font)
+    luuy_notes_align = copy.copy(ws_tpl["A11"].alignment)
+    luuy_header_height = ws_tpl.row_dimensions[10].height if 10 in ws_tpl.row_dimensions else 31.5
+    luuy_notes_height = ws_tpl.row_dimensions[11].height if 11 in ws_tpl.row_dimensions else 43.5
+    notes_text = ws_tpl["A11"].value
+
+    # Unmerge template data rows
+    ranges_to_remove = [
+        str(r) for r in ws_tpl.merged_cells.ranges
+        if r.min_row >= 7 and r.max_row <= 11
+    ]
+    for r in ranges_to_remove:
+        ws_tpl.unmerge_cells(r)
+
+    ws_tpl.delete_rows(7, 5)
+
+    n = len(participants)
+    if n > 0:
+        ws_tpl.insert_rows(7, n)
+
+    thin_side = Side(style='thin', color="000000")
+    border_all = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+    font_normal = Font(name='Times New Roman', size=12)
+    fill_white = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+    align_center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    align_left = Alignment(horizontal='left', vertical='center', wrap_text=True, indent=1)
+
+    for i, p in enumerate(participants):
+        row_idx = 7 + i
+        ws_tpl.row_dimensions[row_idx].height = row7_height
+
+        for col_idx in range(1, 11):
+            cell = ws_tpl.cell(row=row_idx, column=col_idx)
+            style = row7_styles[col_idx - 1]
+            if style["font"]: cell.font = copy.copy(style["font"])
+            if style["fill"]: cell.fill = copy.copy(style["fill"])
+            if style["border"]: cell.border = copy.copy(style["border"])
+            if style["alignment"]: cell.alignment = copy.copy(style["alignment"])
+            cell.number_format = style["number_format"]
+
+            cell.border = border_all
+            cell.font = font_normal
+            cell.fill = fill_white
+            if col_idx in [1, 2, 5, 6, 7, 8]:
+                cell.alignment = align_center
+            else:
+                cell.alignment = align_left
+
+        ws_tpl.cell(row=row_idx, column=1).value = i + 1
+        ws_tpl.cell(row=row_idx, column=2).value = p["danh_xung"]
+        ws_tpl.cell(row=row_idx, column=3).value = p["ho_ten"]
+        ws_tpl.cell(row=row_idx, column=4).value = p["cong_ty"]
+        ws_tpl.cell(row=row_idx, column=5).value = p["cccd"]
+
+        bday = p["ngay_sinh"]
+        if isinstance(bday, datetime):
+            bday_str = f"{bday.day:02d}/{bday.month:02d}/{bday.year}"
+        elif bday:
+            bday_str = str(bday)
+        else:
+            bday_str = ""
+        ws_tpl.cell(row=row_idx, column=6).value = bday_str
+        ws_tpl.cell(row=row_idx, column=7).value = p["gioi_tinh"]
+        ws_tpl.cell(row=row_idx, column=8).value = p["sdt"]
+        ws_tpl.cell(row=row_idx, column=9).value = p["email"]
+        ws_tpl.cell(row=row_idx, column=10).value = ""
+
+    # Re-append Lưu ý section
+    luuy_row = 7 + n
+    notes_row = luuy_row + 1
+
+    ws_tpl.row_dimensions[luuy_row].height = luuy_header_height
+    ws_tpl.cell(row=luuy_row, column=1).value = "Lưu ý"
+    ws_tpl.cell(row=luuy_row, column=1).font = luuy_header_font
+    ws_tpl.cell(row=luuy_row, column=1).alignment = luuy_header_align
+    ws_tpl.merge_cells(start_row=luuy_row, start_column=1, end_row=luuy_row, end_column=10)
+
+    ws_tpl.row_dimensions[notes_row].height = luuy_notes_height
+    ws_tpl.cell(row=notes_row, column=1).value = notes_text
+    ws_tpl.cell(row=notes_row, column=1).font = luuy_notes_font
+    ws_tpl.cell(row=notes_row, column=1).alignment = luuy_notes_align
+    ws_tpl.merge_cells(start_row=notes_row, start_column=1, end_row=notes_row, end_column=10)
+
+    xlsx_buf = io.BytesIO()
+    wb_tpl.save(xlsx_buf)
+    xlsx_buf.seek(0)
+    return xlsx_buf
+
+
 @app.post("/api/training-dossier/export")
 async def td_export_course(
     excel: UploadFile = File(...),
@@ -788,7 +985,7 @@ async def td_export_course(
     template_docx: UploadFile = File(...),
     course_json: str = Form(...),
 ):
-    """Xuất hồ sơ đào tạo: tạo xlsx + docx rồi nén thành ZIP trả về."""
+    """Xuất hồ sơ đào tạo: tạo xlsx + docx theo từng đơn vị rồi nén thành ZIP trả về."""
     logs = []
     def log(type_, text):
         logs.append({"type": type_, "text": text})
@@ -855,203 +1052,75 @@ async def td_export_course(
         date_prefix = dt_bd.strftime("%Y.%m.%d")
         safe_name = _td_make_filename_safe(course["ten_lop"])
 
-        docx_filename = f"{date_prefix}-PGE-TT11-BM03-{safe_name}.docx"
-        xlsx_filename = f"{date_prefix}-{safe_name}.xlsx"
+        # ── NHÓM PARTICIPANTS THEO ĐƠN VỊ ──
+        from collections import OrderedDict
+        unit_groups = OrderedDict()
+        for p in participants:
+            unit_key = _td_classify_unit(p["bo_phan"])
+            if unit_key not in unit_groups:
+                unit_groups[unit_key] = []
+            unit_groups[unit_key].append(p)
 
-        # ── GENERATE DOCX (BM03) ──
-        log("info", "📝 Đang tạo file BM03 (DOCX)...")
-        doc = Document(io.BytesIO(tpl_docx_bytes))
+        log("info", f"📋 Phân loại theo đơn vị: {', '.join(f'{k} ({len(v)} HV)' for k, v in unit_groups.items())}")
 
-        # Fill table 0 (Header)
-        t0 = doc.tables[0]
-        date_range = f"{dt_bd.day:02d}/{dt_bd.month:02d}/{dt_bd.year}"
-        if dt_kt and dt_kt.date() != dt_bd.date():
-            date_range += " - " + f"{dt_kt.day:02d}/{dt_kt.month:02d}/{dt_kt.year}"
-        _td_set_cell_mixed(t0.cell(0, 0), [("Ngày: ", True), (date_range, False)])
-
-        gv = course.get("giang_vien", "")
-        if gv and gv != "Chưa xác định":
-            _td_set_cell_mixed(t0.cell(3, 1), [("Giảng viên: ", True), (gv, False)])
-
-        _td_set_cell_mixed(t0.cell(1, 1), [(course["ten_lop"], False)])
-
-        # Table 2 (Signatures)
-        if len(doc.tables) > 2:
-            t2 = doc.tables[2]
-            hanoi_date = f"Hà Nội, ngày {dt_bd.day} tháng {dt_bd.month} năm {dt_bd.year}"
-            _td_set_cell_mixed(t2.cell(0, 1), [(hanoi_date, False, True)])
-
-            if gv and gv != "Chưa xác định":
-                _td_set_cell_mixed(t2.cell(1, 1), [("GIẢNG VIÊN", True)])
-                if len(t2.rows) > 3:
-                    _td_set_cell_mixed(t2.cell(3, 1), [(gv, False)])
-
-        # Fill table 1 (Participants)
-        t1 = doc.tables[1]
-        template_row = t1.rows[1]
-        template_tr = template_row._tr
-        for i, p in enumerate(participants):
-            new_tr = copy.deepcopy(template_tr)
-            cells = new_tr.findall(qn('w:tc'))
-            data_to_fill = [f"{i+1}.", p["ho_ten"], p["bo_phan"]]
-            for idx, txt in enumerate(data_to_fill):
-                if txt is not None and idx < len(cells):
-                    tc_para = cells[idx].findall(qn('w:p'))[0]
-
-                    if idx == 0:
-                        pPrs = tc_para.findall(qn('w:pPr'))
-                        if not pPrs:
-                            pPr = OxmlElement('w:pPr')
-                            tc_para.insert(0, pPr)
-                        else:
-                            pPr = pPrs[0]
-                        for numPr in pPr.findall(qn('w:numPr')): pPr.remove(numPr)
-                        for ind in pPr.findall(qn('w:ind')): pPr.remove(ind)
-                        jcs = pPr.findall(qn('w:jc'))
-                        if not jcs:
-                            jc = OxmlElement('w:jc')
-                            pPr.append(jc)
-                        else:
-                            jc = jcs[0]
-                        jc.set(qn('w:val'), 'center')
-
-                    for r in tc_para.findall(qn('w:r')): tc_para.remove(r)
-                    nr = OxmlElement('w:r')
-                    nr.append(_td_make_rPr(bold=False))
-                    nt = OxmlElement('w:t')
-                    nt.text = str(txt)
-                    nr.append(nt)
-                    tc_para.append(nr)
-
-            template_tr.getparent().insert(list(template_tr.getparent()).index(template_tr), new_tr)
-        template_tr.getparent().remove(template_tr)
-
-        docx_buf = io.BytesIO()
-        doc.save(docx_buf)
-        docx_buf.seek(0)
-        log("info", f"  ✓ {docx_filename}")
-
-        # ── GENERATE XLSX (Attendance) ──
-        log("info", "📊 Đang tạo file danh sách (XLSX)...")
-        wb_tpl = openpyxl.load_workbook(io.BytesIO(tpl_xlsx_bytes))
-        ws_tpl = wb_tpl.active
-        ws_tpl["F4"].value = course["ten_lop"]
-        ws_tpl["F5"].value = "Ông Bùi Bá Long                       Điện thoại: 0327 706 996"
-
-        # Capture row 7 styles
-        row7_styles = []
-        for col_idx in range(1, 11):
-            cell = ws_tpl.cell(row=7, column=col_idx)
-            row7_styles.append({
-                "font": copy.copy(cell.font) if cell.font else None,
-                "fill": copy.copy(cell.fill) if cell.fill else None,
-                "border": copy.copy(cell.border) if cell.border else None,
-                "alignment": copy.copy(cell.alignment) if cell.alignment else None,
-                "number_format": cell.number_format,
-            })
-        row7_height = ws_tpl.row_dimensions[7].height if 7 in ws_tpl.row_dimensions else 25
-
-        # Capture Lưu ý section
-        luuy_header_font = copy.copy(ws_tpl["A10"].font)
-        luuy_header_align = copy.copy(ws_tpl["A10"].alignment)
-        luuy_notes_font = copy.copy(ws_tpl["A11"].font)
-        luuy_notes_align = copy.copy(ws_tpl["A11"].alignment)
-        luuy_header_height = ws_tpl.row_dimensions[10].height if 10 in ws_tpl.row_dimensions else 31.5
-        luuy_notes_height = ws_tpl.row_dimensions[11].height if 11 in ws_tpl.row_dimensions else 43.5
-        notes_text = ws_tpl["A11"].value
-
-        # Unmerge template data rows
-        ranges_to_remove = [
-            str(r) for r in ws_tpl.merged_cells.ranges
-            if r.min_row >= 7 and r.max_row <= 11
-        ]
-        for r in ranges_to_remove:
-            ws_tpl.unmerge_cells(r)
-
-        ws_tpl.delete_rows(7, 5)
-
-        n = len(participants)
-        if n > 0:
-            ws_tpl.insert_rows(7, n)
-
-        thin_side = Side(style='thin', color="000000")
-        border_all = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
-        font_normal = Font(name='Times New Roman', size=12)
-        fill_white = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
-        align_center = Alignment(horizontal='center', vertical='center', wrap_text=True)
-        align_left = Alignment(horizontal='left', vertical='center', wrap_text=True, indent=1)
-
-        for i, p in enumerate(participants):
-            row_idx = 7 + i
-            ws_tpl.row_dimensions[row_idx].height = row7_height
-
-            for col_idx in range(1, 11):
-                cell = ws_tpl.cell(row=row_idx, column=col_idx)
-                style = row7_styles[col_idx - 1]
-                if style["font"]: cell.font = copy.copy(style["font"])
-                if style["fill"]: cell.fill = copy.copy(style["fill"])
-                if style["border"]: cell.border = copy.copy(style["border"])
-                if style["alignment"]: cell.alignment = copy.copy(style["alignment"])
-                cell.number_format = style["number_format"]
-
-                cell.border = border_all
-                cell.font = font_normal
-                cell.fill = fill_white
-                if col_idx in [1, 2, 5, 6, 7, 8]:
-                    cell.alignment = align_center
-                else:
-                    cell.alignment = align_left
-
-            ws_tpl.cell(row=row_idx, column=1).value = i + 1
-            ws_tpl.cell(row=row_idx, column=2).value = p["danh_xung"]
-            ws_tpl.cell(row=row_idx, column=3).value = p["ho_ten"]
-            ws_tpl.cell(row=row_idx, column=4).value = p["cong_ty"]
-            ws_tpl.cell(row=row_idx, column=5).value = p["cccd"]
-
-            bday = p["ngay_sinh"]
-            if isinstance(bday, datetime):
-                bday_str = f"{bday.day:02d}/{bday.month:02d}/{bday.year}"
-            elif bday:
-                bday_str = str(bday)
-            else:
-                bday_str = ""
-            ws_tpl.cell(row=row_idx, column=6).value = bday_str
-            ws_tpl.cell(row=row_idx, column=7).value = p["gioi_tinh"]
-            ws_tpl.cell(row=row_idx, column=8).value = p["sdt"]
-            ws_tpl.cell(row=row_idx, column=9).value = p["email"]
-            ws_tpl.cell(row=row_idx, column=10).value = ""
-
-        # Re-append Lưu ý section
-        luuy_row = 7 + n
-        notes_row = luuy_row + 1
-
-        ws_tpl.row_dimensions[luuy_row].height = luuy_header_height
-        ws_tpl.cell(row=luuy_row, column=1).value = "Lưu ý"
-        ws_tpl.cell(row=luuy_row, column=1).font = luuy_header_font
-        ws_tpl.cell(row=luuy_row, column=1).alignment = luuy_header_align
-        ws_tpl.merge_cells(start_row=luuy_row, start_column=1, end_row=luuy_row, end_column=10)
-
-        ws_tpl.row_dimensions[notes_row].height = luuy_notes_height
-        ws_tpl.cell(row=notes_row, column=1).value = notes_text
-        ws_tpl.cell(row=notes_row, column=1).font = luuy_notes_font
-        ws_tpl.cell(row=notes_row, column=1).alignment = luuy_notes_align
-        ws_tpl.merge_cells(start_row=notes_row, start_column=1, end_row=notes_row, end_column=10)
-
-        xlsx_buf = io.BytesIO()
-        wb_tpl.save(xlsx_buf)
-        xlsx_buf.seek(0)
-        log("info", f"  ✓ {xlsx_filename}")
-
-        # ── ZIP both files ──
-        log("info", "📦 Đang nén file...")
+        # ── TẠO FILE CHO TỪNG ĐƠN VỊ + FILE ĐẦY ĐỦ ──
         zip_buf = io.BytesIO()
         with zipfile.ZipFile(zip_buf, 'w', zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr(docx_filename, docx_buf.getvalue())
-            zf.writestr(xlsx_filename, xlsx_buf.getvalue())
+
+            if len(unit_groups) == 1:
+                # Chỉ có 1 đơn vị -> Không cần tạo thư mục con, xuất thẳng file vào ZIP
+                unit_key = list(unit_groups.keys())[0]
+                unit_safe = _td_make_filename_safe(unit_key)
+                
+                log("info", f"📝 Chỉ có 1 đơn vị ({unit_key}), xuất thẳng file...")
+                docx_filename = f"{date_prefix}-PGE-TT11-BM03-{safe_name}-{unit_safe}.docx"
+                docx_buf = _td_generate_docx(tpl_docx_bytes, course, participants, dt_bd, dt_kt)
+                zf.writestr(docx_filename, docx_buf.getvalue())
+                log("info", f"  ✓ {docx_filename}")
+
+                xlsx_filename = f"{date_prefix}-{safe_name}-{unit_safe}.xlsx"
+                xlsx_buf = _td_generate_xlsx(tpl_xlsx_bytes, course, participants)
+                zf.writestr(xlsx_filename, xlsx_buf.getvalue())
+                log("info", f"  ✓ {xlsx_filename}")
+
+            else:
+                # Có nhiều đơn vị -> Tạo thư mục cho từng đơn vị và thư mục Chung_Chi
+                # 1) File cho từng đơn vị
+                for unit_key, unit_participants in unit_groups.items():
+                    unit_safe = _td_make_filename_safe(unit_key)
+                    unit_folder = f"{unit_safe}/"
+
+                    # DOCX cho đơn vị
+                    log("info", f"📝 Đang tạo BM03 cho {unit_key} ({len(unit_participants)} HV)...")
+                    unit_docx_filename = f"{date_prefix}-PGE-TT11-BM03-{safe_name}-{unit_safe}.docx"
+                    unit_docx_buf = _td_generate_docx(tpl_docx_bytes, course, unit_participants, dt_bd, dt_kt)
+                    zf.writestr(f"{unit_folder}{unit_docx_filename}", unit_docx_buf.getvalue())
+                    log("info", f"  ✓ {unit_folder}{unit_docx_filename}")
+
+                    # XLSX cho đơn vị
+                    log("info", f"📊 Đang tạo danh sách cho {unit_key}...")
+                    unit_xlsx_filename = f"{date_prefix}-{safe_name}-{unit_safe}.xlsx"
+                    unit_xlsx_buf = _td_generate_xlsx(tpl_xlsx_bytes, course, unit_participants)
+                    zf.writestr(f"{unit_folder}{unit_xlsx_filename}", unit_xlsx_buf.getvalue())
+                    log("info", f"  ✓ {unit_folder}{unit_xlsx_filename}")
+
+                # 2) File đầy đủ cho chứng chỉ
+                full_folder = "Chung_Chi/"
+                full_docx_filename = f"{date_prefix}-PGE-TT11-BM03-{safe_name}.docx"
+                full_xlsx_filename = f"{date_prefix}-{safe_name}.xlsx"
+
+                log("info", f"📝 Đang tạo file đầy đủ ({len(participants)} HV) cho chứng chỉ...")
+                full_docx_buf = _td_generate_docx(tpl_docx_bytes, course, participants, dt_bd, dt_kt)
+                zf.writestr(f"{full_folder}{full_docx_filename}", full_docx_buf.getvalue())
+                log("info", f"  ✓ {full_folder}{full_docx_filename}")
+
+                full_xlsx_buf = _td_generate_xlsx(tpl_xlsx_bytes, course, participants)
+                zf.writestr(f"{full_folder}{full_xlsx_filename}", full_xlsx_buf.getvalue())
+                log("info", f"  ✓ {full_folder}{full_xlsx_filename}")
 
         zip_buf.seek(0)
         zip_name = f"{date_prefix}-Ho_So_Dao_Tao-{safe_name}.zip"
-        log("success", f"✅ Xong! Đã tạo hồ sơ đào tạo cho {len(participants)} học viên.")
+        log("success", f"✅ Xong! Đã tạo hồ sơ đào tạo cho {len(participants)} học viên ({len(unit_groups)} đơn vị).")
 
         return Response(
             content=zip_buf.getvalue(),
